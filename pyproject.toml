@@ -1,0 +1,16 @@
+[project]
+name = "agentloops"
+version = "0.1.0"
+description = "The intelligence layer for AI agents. Self-learning loops that make your agents smarter over time."
+authors = [{name = "Maria Hollweck", email = "maria@asobi.dev"}]
+requires-python = ">=3.10"
+dependencies = ["anthropic>=0.40.0"]
+
+[project.optional-dependencies]
+postgres = ["psycopg2-binary>=2.9"]
+langchain = ["langchain-core>=0.3"]
+crewai = ["crewai>=0.80"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

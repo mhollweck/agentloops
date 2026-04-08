@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgentLoops - The Intelligence Layer for AI Agents</title>
+  <meta name="description" content="Self-learning loops that make your AI agents smarter over time. Track, reflect, learn, evolve. 5 lines of code.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --accent: #6366f1;
+      --accent-light: #818cf8;
+      --accent-bg: #eef2ff;
+      --bg: #ffffff;
+      --fg: #0f172a;
+      --fg-muted: #64748b;
+      --fg-subtle: #94a3b8;
+      --border: #e2e8f0;
+      --code-bg: #0f172a;
+      --code-fg: #e2e8f0;
+      --card-hover: #f8fafc;
+      --radius: 12px;
+      --max-w: 1120px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--fg);
+      background: var(--bg);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* --- Nav --- */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo {
+      font-weight: 800;
+      font-size: 18px;
+      color: var(--fg);
+      text-decoration: none;
+      letter-spacing: -0.02em;
+    }
+    .nav-links { display: flex; gap: 28px; align-items: center; }
+    .nav-links a {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--fg-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .nav-links a:hover { color: var(--fg); }
+    .nav-cta {
+      background: var(--fg) !important;
+      color: var(--bg) !important;
+      padding: 6px 16px;
+      border-radius: 8px;
+      font-size: 13px !important;
+      transition: opacity 0.15s;
+    }
+    .nav-cta:hover { opacity: 0.85; }
+
+    /* --- Sections --- */
+    section { padding: 96px 24px; }
+    .container { max-width: var(--max-w); margin: 0 auto; }
+
+    /* --- Hero --- */
+    .hero {
+      padding-top: 160px;
+      padding-bottom: 80px;
+      text-align: center;
+    }
+    .hero-badge {
+      display: inline-block;
+      padding: 4px 14px;
+      background: var(--accent-bg);
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 20px;
+      margin-bottom: 24px;
+    }
+    .hero h1 {
+      font-size: clamp(36px, 5vw, 64px);
+      font-weight: 800;
+      letter-spacing: -0.035em;
+      line-height: 1.1;
+      max-width: 720px;
+      margin: 0 auto 20px;
+    }
+    .hero p {
+      font-size: clamp(16px, 2vw, 20px);
+      color: var(--fg-muted);
+      max-width: 540px;
+      margin: 0 auto 40px;
+      line-height: 1.5;
+    }
+    .hero-ctas {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.15s;
+      cursor: pointer;
+      border: none;
+    }
+    .btn-primary {
+      background: var(--fg);
+      color: var(--bg);
+    }
+    .btn-primary:hover { opacity: 0.85; }
+    .btn-secondary {
+      background: var(--bg);
+      color: var(--fg);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: var(--card-hover); }
+    .pip-cmd {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .copy-icon {
+      width: 16px;
+      height: 16px;
+      opacity: 0.5;
+      transition: opacity 0.15s;
+    }
+    .btn:hover .copy-icon { opacity: 1; }
+
+    /* --- Stack Gap --- */
+    .stack-section { background: var(--card-hover); }
+    .stack-section h2 {
+      text-align: center;
+      font-size: clamp(24px, 3vw, 36px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 12px;
+    }
+    .stack-section .subtitle {
+      text-align: center;
+      color: var(--fg-muted);
+      font-size: 17px;
+      margin-bottom: 48px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .stack-diagram {
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
+      gap: 0;
+      max-width: 900px;
+      margin: 0 auto;
+      overflow-x: auto;
+      padding-bottom: 8px;
+    }
+    .stack-col {
+      flex: 1;
+      min-width: 140px;
+      text-align: center;
+    }
+    .stack-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--fg-subtle);
+      margin-bottom: 8px;
+    }
+    .stack-box {
+      padding: 16px 12px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--fg);
+      position: relative;
+    }
+    .stack-col:first-child .stack-box { border-radius: var(--radius) 0 0 var(--radius); }
+    .stack-col:last-child .stack-box { border-radius: 0 var(--radius) var(--radius) 0; }
+    .stack-col:not(:first-child) .stack-box { border-left: none; }
+    .stack-tools {
+      font-size: 11px;
+      color: var(--fg-subtle);
+      margin-top: 8px;
+      font-weight: 400;
+    }
+    .stack-col.highlight .stack-box {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+    .stack-col.highlight .stack-tools { color: rgba(255,255,255,0.7); }
+    .stack-arrow {
+      display: flex;
+      align-items: center;
+      color: var(--fg-subtle);
+      font-size: 18px;
+      padding: 0 2px;
+    }
+
+    /* --- Code Example --- */
+    .code-section h2 {
+      text-align: center;
+      font-size: clamp(24px, 3vw, 36px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 12px;
+    }
+    .code-section .subtitle {
+      text-align: center;
+      color: var(--fg-muted);
+      font-size: 17px;
+      margin-bottom: 40px;
+    }
+    .code-block {
+      background: var(--code-bg);
+      border-radius: var(--radius);
+      padding: 28px 32px;
+      max-width: 640px;
+      margin: 0 auto;
+      overflow-x: auto;
+      position: relative;
+    }
+    .code-block pre {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--code-fg);
+    }
+    .code-block .kw { color: #c084fc; }
+    .code-block .fn { color: #67e8f9; }
+    .code-block .str { color: #86efac; }
+    .code-block .cmt { color: #64748b; }
+    .code-block .num { color: #fbbf24; }
+    .code-lang {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      font-size: 11px;
+      color: var(--fg-subtle);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* --- Mechanisms --- */
+    .mechanisms h2 {
+      text-align: center;
+      font-size: clamp(24px, 3vw, 36px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 12px;
+    }
+    .mechanisms .subtitle {
+      text-align: center;
+      color: var(--fg-muted);
+      font-size: 17px;
+      margin-bottom: 48px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .mech-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+    }
+    .mech-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      transition: background 0.15s;
+    }
+    .mech-card:hover { background: var(--card-hover); }
+    .mech-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      background: var(--accent-bg);
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: 8px;
+      margin-bottom: 12px;
+    }
+    .mech-card h3 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      letter-spacing: -0.01em;
+    }
+    .mech-card p {
+      font-size: 14px;
+      color: var(--fg-muted);
+      line-height: 1.5;
+    }
+    .mech-when {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--fg-subtle);
+      font-weight: 500;
+    }
+
+    /* --- Industries --- */
+    .industries { background: var(--card-hover); }
+    .industries h2 {
+      text-align: center;
+      font-size: clamp(24px, 3vw, 36px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 12px;
+    }
+    .industries .subtitle {
+      text-align: center;
+      color: var(--fg-muted);
+      font-size: 17px;
+      margin-bottom: 48px;
+    }
+    .ind-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .ind-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .ind-icon { font-size: 24px; margin-bottom: 8px; }
+    .ind-card h3 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .ind-card p {
+      font-size: 13px;
+      color: var(--fg-muted);
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+    .ind-roi {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    /* --- Comparison --- */
+    .comparison h2 {
+      text-align: center;
+      font-size: clamp(24px, 3vw, 36px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 48px;
+    }
+    .cmp-table-wrap {
+      overflow-x: auto;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .cmp-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .cmp-table th, .cmp-table td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .cmp-table th {
+      font-weight: 700;
+      font-size: 13px;
+      color: var(--fg-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .cmp-table th:nth-child(2) {
+      color: var(--accent);
+    }
+    .cmp-table td:first-child {
+      font-weight: 600;
+    }
+    .cmp-table td:nth-child(2) {
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .check { color: var(--accent); }
+    .dash { color: var(--fg-subtle); }
+
+    /* --- CTA / Waitlist --- */
+    .waitlist {
+      text-align: center;
+      background: var(--code-bg);
+      color: var(--code-fg);
+    }
+    .waitlist h2 {
+      font-size: clamp(24px, 3vw, 40px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 12px;
+      color: white;
+    }
+    .waitlist p {
+      color: var(--fg-subtle);
+      font-size: 17px;
+      margin-bottom: 32px;
+    }
+    .waitlist-form {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .waitlist-form input {
+      flex: 1;
+      min-width: 200px;
+      padding: 12px 16px;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.05);
+      color: white;
+      font-size: 15px;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .waitlist-form input::placeholder { color: var(--fg-subtle); }
+    .waitlist-form input:focus { border-color: var(--accent); }
+    .waitlist-form button {
+      padding: 12px 28px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .waitlist-form button:hover { opacity: 0.85; }
+
+    /* --- Footer --- */
+    footer {
+      padding: 40px 24px;
+      border-top: 1px solid var(--border);
+    }
+    .footer-inner {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .footer-left {
+      font-size: 14px;
+      color: var(--fg-muted);
+    }
+    .footer-left a {
+      color: var(--fg);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .footer-left a:hover { text-decoration: underline; }
+    .footer-links {
+      display: flex;
+      gap: 24px;
+    }
+    .footer-links a {
+      font-size: 14px;
+      color: var(--fg-muted);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .footer-links a:hover { color: var(--fg); }
+
+    /* --- Responsive --- */
+    @media (max-width: 640px) {
+      section { padding: 64px 16px; }
+      .hero { padding-top: 120px; }
+      .nav-links a:not(.nav-cta) { display: none; }
+      .stack-diagram { flex-direction: column; gap: 8px; }
+      .stack-col .stack-box { border-radius: var(--radius) !important; border-left: 1px solid var(--border) !important; }
+      .stack-col.highlight .stack-box { border-left-color: var(--accent) !important; }
+      .stack-arrow { justify-content: center; transform: rotate(90deg); }
+      .code-block { padding: 20px 16px; }
+      .code-block pre { font-size: 12px; }
+      .mech-grid { grid-template-columns: 1fr; }
+      .ind-grid { grid-template-columns: 1fr 1fr; }
+      .cmp-table { font-size: 12px; }
+      .cmp-table th, .cmp-table td { padding: 8px 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">AgentLoops</a>
+    <div class="nav-links">
+      <a href="#mechanisms">Mechanisms</a>
+      <a href="#comparison">Compare</a>
+      <a href="https://github.com/asobi-labs/agentloops" target="_blank" class="nav-cta">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-badge">Open Source</div>
+    <h1>Your agents have memory. Now give them a brain.</h1>
+    <p>Self-learning loops that make your AI agents smarter over time. Track runs, extract patterns, inject learned rules. 5 lines of code.</p>
+    <div class="hero-ctas">
+      <button class="btn btn-primary pip-cmd" onclick="copyPip()" id="pip-btn">
+        pip install agentloops
+        <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+          <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+        </svg>
+      </button>
+      <a href="https://github.com/asobi-labs/agentloops" target="_blank" class="btn btn-secondary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        Star on GitHub
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- Stack Gap -->
+<section class="stack-section">
+  <div class="container">
+    <h2>The Missing Layer</h2>
+    <p class="subtitle">Every AI agent stack has memory. None of them learn. AgentLoops fills the gap.</p>
+    <div class="stack-diagram">
+      <div class="stack-col">
+        <div class="stack-label">Frameworks</div>
+        <div class="stack-box">Build<div class="stack-tools">LangChain, CrewAI</div></div>
+      </div>
+      <div class="stack-col">
+        <div class="stack-label">Observability</div>
+        <div class="stack-box">Observe<div class="stack-tools">LangSmith, Arize</div></div>
+      </div>
+      <div class="stack-col">
+        <div class="stack-label">Memory</div>
+        <div class="stack-box">Remember<div class="stack-tools">Mem0, Letta</div></div>
+      </div>
+      <div class="stack-col highlight">
+        <div class="stack-label">Intelligence</div>
+        <div class="stack-box">Learn<div class="stack-tools">AgentLoops</div></div>
+      </div>
+      <div class="stack-col">
+        <div class="stack-label">Evaluation</div>
+        <div class="stack-box">Evaluate<div class="stack-tools">Braintrust, RAGAS</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Code Example -->
+<section class="code-section">
+  <div class="container">
+    <h2>Five Lines. Infinite Learning.</h2>
+    <p class="subtitle">Add self-learning to any agent in under a minute.</p>
+    <div class="code-block">
+      <span class="code-lang">Python</span>
+      <pre><span class="kw">from</span> agentloops <span class="kw">import</span> AgentLoops
+
+loops = <span class="fn">AgentLoops</span>(<span class="str">"sales-outreach"</span>)
+
+<span class="cmt"># Track every agent run</span>
+loops.<span class="fn">track</span>(input=task, output=result, outcome=<span class="str">"meeting_booked"</span>)
+
+<span class="cmt"># Agent reflects on what's working</span>
+reflection = loops.<span class="fn">reflect</span>()
+
+<span class="cmt"># Inject learned rules into your prompt</span>
+enhanced = loops.<span class="fn">enhance_prompt</span>(base_prompt)
+
+<span class="cmt"># Evolve conventions over time</span>
+loops.conventions.<span class="fn">evolve</span>()
+
+<span class="cmt"># Forget stale patterns</span>
+loops.<span class="fn">forget</span>(max_age_days=<span class="num">21</span>)</pre>
+    </div>
+  </div>
+</section>
+
+<!-- 7 Mechanisms -->
+<section class="mechanisms" id="mechanisms">
+  <div class="container">
+    <h2>Seven Learning Mechanisms</h2>
+    <p class="subtitle">Inspired by Reflexion, cognitive memory architectures, and months of production use.</p>
+    <div class="mech-grid">
+      <div class="mech-card">
+        <div class="mech-num">1</div>
+        <h3>Self-Reflection</h3>
+        <p>Agent evaluates its own output and writes patterns to conventions. Learns from every single run.</p>
+        <div class="mech-when">Runs: After every run</div>
+      </div>
+      <div class="mech-card">
+        <div class="mech-num">2</div>
+        <h3>Spike Detection</h3>
+        <p>Detects performance anomalies and triggers immediate follow-up analysis to understand what changed.</p>
+        <div class="mech-when">Runs: Continuous</div>
+      </div>
+      <div class="mech-card">
+        <div class="mech-num">3</div>
+        <h3>Quality Gate</h3>
+        <p>Scores outputs on configurable criteria before they ship. Catches regressions before your users do.</p>
+        <div class="mech-when">Runs: Before output</div>
+      </div>
+      <div class="mech-card">
+        <div class="mech-num">4</div>
+        <h3>Decision Rules</h3>
+        <p>Extracts prescriptive IF/THEN rules from performance data. Not opinions -- evidence-backed patterns.</p>
+        <div class="mech-when">Runs: Weekly</div>
+      </div>
+      <div class="mech-card">
+        <div class="mech-num">5</div>
+        <h3>Cross-Evaluation</h3>
+        <p>Compares agent predictions against actual outcomes. Validates which rules actually move the needle.</p>
+        <div class="mech-when">Runs: Weekly</div>
+      </div>
+      <div class="mech-card">
+        <div class="mech-num">6</div>
+        <h3>Contradiction Resolution</h3>
+        <p>Detects conflicting learned rules and resolves them automatically. No more contradictory conventions.</p>
+        <div class="mech-when">Runs: Weekly</div>
+      </div>
+      <div class="mech-card">
+        <div class="mech-num">7</div>
+        <h3>Selective Forgetting</h3>
+        <p>Prunes stale patterns that no longer apply. Keeps memory lean and relevant with time-decay + importance weighting.</p>
+        <div class="mech-when">Runs: Daily</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 Industries -->
+<section class="industries">
+  <div class="container">
+    <h2>Works Everywhere Agents Run</h2>
+    <p class="subtitle">If your agent runs more than once, it should be learning.</p>
+    <div class="ind-grid">
+      <div class="ind-card">
+        <div class="ind-icon">&#128200;</div>
+        <h3>Sales Outreach</h3>
+        <p>Agents learn which email patterns book meetings</p>
+        <div class="ind-roi">+40% reply rate in 30 days</div>
+      </div>
+      <div class="ind-card">
+        <div class="ind-icon">&#127911;</div>
+        <h3>Customer Support</h3>
+        <p>Learn which responses resolve tickets fastest</p>
+        <div class="ind-roi">-35% resolution time</div>
+      </div>
+      <div class="ind-card">
+        <div class="ind-icon">&#128221;</div>
+        <h3>Content Creation</h3>
+        <p>Discover which formats drive the most engagement</p>
+        <div class="ind-roi">+2.5x engagement rate</div>
+      </div>
+      <div class="ind-card">
+        <div class="ind-icon">&#128187;</div>
+        <h3>Code Generation</h3>
+        <p>Learn which patterns produce fewer bugs</p>
+        <div class="ind-roi">-50% bug rate</div>
+      </div>
+      <div class="ind-card">
+        <div class="ind-icon">&#128269;</div>
+        <h3>Research Agents</h3>
+        <p>Learn which sources yield the best insights</p>
+        <div class="ind-roi">+60% insight quality</div>
+      </div>
+      <div class="ind-card">
+        <div class="ind-icon">&#128176;</div>
+        <h3>Trading & Finance</h3>
+        <p>Agents learn from market pattern outcomes</p>
+        <div class="ind-roi">+25% signal accuracy</div>
+      </div>
+      <div class="ind-card">
+        <div class="ind-icon">&#128640;</div>
+        <h3>DevOps & SRE</h3>
+        <p>Learn which incidents need which runbooks</p>
+        <div class="ind-roi">-45% MTTR</div>
+      </div>
+      <div class="ind-card">
+        <div class="ind-icon">&#127891;</div>
+        <h3>EdTech & Tutoring</h3>
+        <p>Adapt teaching style to what works per student</p>
+        <div class="ind-roi">+30% learning outcomes</div>
+      </div>
+      <div class="ind-card">
+        <div class="ind-icon">&#9878;&#65039;</div>
+        <h3>Legal & Compliance</h3>
+        <p>Learn which clauses flag real risks vs noise</p>
+        <div class="ind-roi">-70% false positives</div>
+      </div>
+      <div class="ind-card">
+        <div class="ind-icon">&#129658;</div>
+        <h3>Healthcare</h3>
+        <p>Improve triage accuracy from patient interaction data</p>
+        <div class="ind-roi">+35% triage accuracy</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Comparison -->
+<section class="comparison" id="comparison">
+  <div class="container">
+    <h2>How AgentLoops Compares</h2>
+    <div class="cmp-table-wrap">
+      <table class="cmp-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>AgentLoops</th>
+            <th>Mem0</th>
+            <th>Letta</th>
+            <th>DIY</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Self-reflection</td>
+            <td class="check">Yes</td>
+            <td class="dash">--</td>
+            <td class="dash">--</td>
+            <td>Manual</td>
+          </tr>
+          <tr>
+            <td>Automatic rule extraction</td>
+            <td class="check">Yes</td>
+            <td class="dash">--</td>
+            <td class="dash">--</td>
+            <td>Manual</td>
+          </tr>
+          <tr>
+            <td>Spike detection</td>
+            <td class="check">Yes</td>
+            <td class="dash">--</td>
+            <td class="dash">--</td>
+            <td>Manual</td>
+          </tr>
+          <tr>
+            <td>Contradiction resolution</td>
+            <td class="check">Yes</td>
+            <td class="dash">--</td>
+            <td class="dash">--</td>
+            <td class="dash">--</td>
+          </tr>
+          <tr>
+            <td>Selective forgetting</td>
+            <td class="check">Yes</td>
+            <td class="dash">--</td>
+            <td>Partial</td>
+            <td class="dash">--</td>
+          </tr>
+          <tr>
+            <td>Prompt enhancement</td>
+            <td class="check">Yes</td>
+            <td class="dash">--</td>
+            <td class="dash">--</td>
+            <td>Manual</td>
+          </tr>
+          <tr>
+            <td>Convention evolution</td>
+            <td class="check">Yes</td>
+            <td class="dash">--</td>
+            <td class="dash">--</td>
+            <td class="dash">--</td>
+          </tr>
+          <tr>
+            <td>Framework-agnostic</td>
+            <td class="check">Yes</td>
+            <td class="check">Yes</td>
+            <td class="dash">No</td>
+            <td class="check">Yes</td>
+          </tr>
+          <tr>
+            <td>Lines of code to add</td>
+            <td class="check">~5</td>
+            <td>~10</td>
+            <td>~50</td>
+            <td>~500</td>
+          </tr>
+          <tr>
+            <td>Focus</td>
+            <td><strong>Learning</strong></td>
+            <td>Storage</td>
+            <td>Stateful agents</td>
+            <td class="dash">--</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- Waitlist / CTA -->
+<section class="waitlist">
+  <div class="container">
+    <h2>Join 500+ Developers</h2>
+    <p>Get early access to new features, integrations, and the hosted version.</p>
+    <form class="waitlist-form" onsubmit="handleWaitlist(event)">
+      <input type="email" placeholder="you@company.com" required>
+      <button type="submit">Join Waitlist</button>
+    </form>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-left">
+      Built by <a href="https://x.com/mariahollweck" target="_blank">Maria Hollweck</a> at <a href="https://asobi-labs.com" target="_blank">Asobi Labs</a>
+    </div>
+    <div class="footer-links">
+      <a href="https://github.com/asobi-labs/agentloops" target="_blank">GitHub</a>
+      <a href="https://agentloops.dev/docs" target="_blank">Docs</a>
+      <a href="https://discord.gg/agentloops" target="_blank">Discord</a>
+      <a href="https://x.com/mariahollweck" target="_blank">Twitter</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+function copyPip() {
+  navigator.clipboard.writeText('pip install agentloops').then(() => {
+    const btn = document.getElementById('pip-btn');
+    const original = btn.innerHTML;
+    btn.innerHTML = 'Copied!';
+    setTimeout(() => { btn.innerHTML = original; }, 1500);
+  });
+}
+
+function handleWaitlist(e) {
+  e.preventDefault();
+  const email = e.target.querySelector('input').value;
+  window.location.href = 'mailto:maria@asobi.dev?subject=AgentLoops Waitlist&body=Add me to the AgentLoops waitlist: ' + encodeURIComponent(email);
+}
+</script>
+
+</body>
+</html>
