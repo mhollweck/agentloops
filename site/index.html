@@ -852,12 +852,12 @@ loops.<span class="fn">forget</span>(max_age_days=<span class="num">21</span>)</
 <!-- Waitlist / CTA -->
 <section class="waitlist">
   <div class="container">
-    <h2>Join 500+ Developers</h2>
-    <p>Get early access to new features, integrations, and the hosted version.</p>
-    <form class="waitlist-form" onsubmit="handleWaitlist(event)">
-      <input type="email" placeholder="you@company.com" required>
-      <button type="submit">Join Waitlist</button>
-    </form>
+    <h2>Start Learning Now</h2>
+    <p>pip install agentloops. Two lines of code. Your agent learns from every run.</p>
+    <div class="hero-ctas" style="justify-content: center;">
+      <a href="https://github.com/mhollweck/agentloops" target="_blank" class="btn" style="background:var(--accent);color:white;">Get Started on GitHub</a>
+      <a href="https://discord.gg/mwQZQCRp" target="_blank" class="btn" style="background:rgba(255,255,255,0.1);color:white;border:1px solid rgba(255,255,255,0.2);">Join Discord</a>
+    </div>
   </div>
 </section>
 
@@ -869,8 +869,8 @@ loops.<span class="fn">forget</span>(max_age_days=<span class="num">21</span>)</
     </div>
     <div class="footer-links">
       <a href="https://github.com/mhollweck/agentloops" target="_blank">GitHub</a>
-      <a href="https://agent-loops.com/docs" target="_blank">Docs</a>
-      <a href="https://discord.gg/agentloops" target="_blank">Discord</a>
+      <a href="https://github.com/mhollweck/agentloops/tree/main/docs" target="_blank">Docs</a>
+      <a href="https://discord.gg/mwQZQCRp" target="_blank">Discord</a>
     </div>
   </div>
 </footer>
@@ -888,7 +888,7 @@ function copyPip() {
 function handleWaitlist(e) {
   e.preventDefault();
   const email = e.target.querySelector('input').value;
-  window.location.href = 'mailto:maria@asobi.dev?subject=AgentLoops Waitlist&body=Add me to the AgentLoops waitlist: ' + encodeURIComponent(email);
+  window.location.href = 'mailto:maria@asobi-labs.com?subject=AgentLoops Waitlist&body=Add me to the AgentLoops waitlist: ' + encodeURIComponent(email);
 }
 </script>
 

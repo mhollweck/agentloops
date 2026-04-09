@@ -262,7 +262,7 @@ else:
     regenerate()
 ```
 
-Built-in checks catch empty outputs, hallucination markers, and length violations. Rule-based checks validate output against learned "avoid" rules. You can also pass custom check functions. See the [API Reference](https://agent-loops.com/docs/api) for full configuration.
+Built-in checks catch empty outputs, hallucination markers, and length violations. Rule-based checks validate output against learned "avoid" rules. You can also pass custom check functions. See the [API Reference](https://github.com/mhollweck/agentloops/blob/main/docs/api-reference.md) for full configuration.
 
 ## How It Works
 
@@ -342,7 +342,7 @@ pip install agentloops[mcp]
 }
 ```
 
-Your agent gets 7 tools: `recall`, `remember`, `reflect`, `get_rules`, `check`, `enhance_prompt`, `list_agent_types`. Same learning engine, zero code. See [MCP docs](https://agent-loops.com/docs/mcp) for details.
+Your agent gets 7 tools: `recall`, `remember`, `reflect`, `get_rules`, `check`, `enhance_prompt`, `list_agent_types`. Same learning engine, zero code. See [MCP docs](https://github.com/mhollweck/agentloops/blob/main/docs/mcp.md) for details.
 
 ## Framework Agnostic
 
@@ -401,10 +401,10 @@ AgentLoops doesn't replace memory — it sits on top of it. Memory stores what h
 
 ## Documentation
 
-- [Getting Started](https://agent-loops.com/docs/quickstart) -- up and running in 5 minutes
-- [7 Mechanisms Deep Dive](https://agent-loops.com/docs/mechanisms) -- how each mechanism works
+- [Getting Started](https://github.com/mhollweck/agentloops/blob/main/docs/quickstart.md) -- up and running in 5 minutes
+- [7 Mechanisms Deep Dive](https://github.com/mhollweck/agentloops/blob/main/docs/concepts.md) -- how each mechanism works
 - [Examples](https://github.com/mhollweck/agentloops/tree/main/examples) -- real-world usage patterns
-- [API Reference](https://agent-loops.com/docs/api) -- full API documentation
+- [API Reference](https://github.com/mhollweck/agentloops/blob/main/docs/api-reference.md) -- full API documentation
 
 ## Community
 
