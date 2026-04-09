@@ -6,8 +6,8 @@
 <p align="center">
   <a href="https://pypi.org/project/agentloops/"><img src="https://img.shields.io/pypi/v/agentloops?color=blue" alt="PyPI"></a>
   <a href="https://pypi.org/project/agentloops/"><img src="https://img.shields.io/pypi/dm/agentloops" alt="Downloads"></a>
-  <a href="https://github.com/asobi-labs/agentloops/stargazers"><img src="https://img.shields.io/github/stars/asobi-labs/agentloops?style=social" alt="Stars"></a>
-  <a href="https://github.com/asobi-labs/agentloops/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"></a>
+  <a href="https://github.com/mhollweck/agentloops/stargazers"><img src="https://img.shields.io/github/stars/mhollweck/agentloops?style=social" alt="Stars"></a>
+  <a href="https://github.com/mhollweck/agentloops/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"></a>
 </p>
 
 ---
@@ -181,23 +181,42 @@ loops.track(input=user_msg, output=response, outcome=metric)
 
 - **Sales agents** that learn which outreach patterns book meetings
 - **Support agents** that learn which responses resolve tickets faster
+- **Help desk agents** that learn guest preferences, upsell timing, and escalation patterns (hotels, airlines, SaaS)
 - **Content agents** that learn which formats drive engagement
 - **Coding agents** that learn which patterns produce fewer bugs
 - **Research agents** that learn which sources yield better insights
 
 If your agent runs more than once, it should be learning.
 
+### Why Self-Learning Matters (Not Just Memory)
+
+Memory systems (Mem0, Letta, Zep) store facts: *"this user prefers window seats"* or *"last order was a latte."* That's recall — the agent remembers what happened.
+
+**Learning is fundamentally different.** Learning means the agent changes its *behavior* based on outcomes:
+
+| | Memory | Learning |
+|---|--------|---------|
+| Hotel help desk | "Guest in 412 asked for extra towels last time" | "Guests who book suites AND request late checkout convert 3x on spa upsells — offer proactively" |
+| Sales outreach | "Last email to this prospect was June 3" | "CTOs at Series B companies respond 4x more to technical deep-dives than ROI pitches" |
+| Support tickets | "Customer had billing issue last month" | "Billing tickets mentioning 'cancel' resolve 60% faster when you lead with empathy + immediate credit" |
+
+Memory gives you a notebook. Learning gives you judgment.
+
+Without learning, your agent makes the same mistakes on run #1,000 as run #1. It remembers more *facts* but never gets *smarter*. It's the difference between a new hire who takes great notes and a senior employee who has developed intuition from thousands of reps.
+
+AgentLoops doesn't replace memory — it sits on top of it. Memory stores what happened. **AgentLoops learns what to do about it.**
+
 ## Documentation
 
 - [Getting Started](https://agentloops.dev/docs/quickstart) -- up and running in 5 minutes
 - [7 Mechanisms Deep Dive](https://agentloops.dev/docs/mechanisms) -- how each mechanism works
-- [Examples](https://github.com/asobi-labs/agentloops/tree/main/examples) -- real-world usage patterns
+- [Examples](https://github.com/mhollweck/agentloops/tree/main/examples) -- real-world usage patterns
 - [API Reference](https://agentloops.dev/docs/api) -- full API documentation
 
 ## Community
 
 - [Discord](https://discord.gg/agentloops) -- questions, showcase, feedback
-- [GitHub Issues](https://github.com/asobi-labs/agentloops/issues) -- bugs and feature requests
+- [GitHub Issues](https://github.com/mhollweck/agentloops/issues) -- bugs and feature requests
 - [Twitter/X](https://x.com/mariahollweck) -- updates and announcements
 
 ## Contributing

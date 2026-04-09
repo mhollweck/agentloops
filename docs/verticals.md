@@ -33,7 +33,7 @@ IF subject line is a question THEN expect 28% higher open rate
 
 **ROI estimate:** A sales team running 10,000 outreach emails/month at a 2% reply rate. A 50% improvement in reply rate (2% to 3%) means 100 more replies/month. At a 20% meeting-to-close rate and $50K ACV, that's $1M incremental pipeline per month.
 
-**Example:** [`examples/sales_agent/`](https://github.com/asobi-labs/agentloops/tree/main/examples/sales_agent)
+**Example:** [`examples/sales_agent/`](https://github.com/mhollweck/agentloops/tree/main/examples/sales_agent)
 
 ---
 
@@ -67,7 +67,7 @@ IF customer has contacted 3+ times about same issue THEN escalate immediately --
 
 **ROI estimate:** A company handling 100K support tickets/month at $7/ticket average cost. Improving FCR from 65% to 80% eliminates 15,000 repeat contacts/month = $105K/month saved. Plus CSAT improvements reduce churn.
 
-**Example:** [`examples/support_agent/`](https://github.com/asobi-labs/agentloops/tree/main/examples/support_agent)
+**Example:** [`examples/support_agent/`](https://github.com/mhollweck/agentloops/tree/main/examples/support_agent)
 
 ---
 
@@ -101,7 +101,7 @@ IF claim documentation is unusually complete for claim type THEN check for stage
 
 **ROI estimate:** An insurer processing $500M in claims annually with a 5% fraud rate ($25M). Improving detection from 60% to 75% catches an additional $3.75M in fraud per year. Reducing false positives by 30% saves 2,000 adjuster hours/year.
 
-**Example:** [`examples/insurance_agent/`](https://github.com/asobi-labs/agentloops/tree/main/examples/insurance_agent)
+**Example:** [`examples/insurance_agent/`](https://github.com/mhollweck/agentloops/tree/main/examples/insurance_agent)
 
 ---
 
@@ -135,7 +135,7 @@ IF import statement THEN use absolute paths from @/ alias -- project convention
 
 **ROI estimate:** A 50-person engineering team spending 20% of time on code review and fixes. Improving suggestion quality from 55% to 75% acceptance rate saves 2 hours/developer/week = 5,200 hours/year. At $150K average salary, that's $375K/year in recovered productivity.
 
-**Example:** [`examples/coding_agent/`](https://github.com/asobi-labs/agentloops/tree/main/examples/coding_agent)
+**Example:** [`examples/coding_agent/`](https://github.com/mhollweck/agentloops/tree/main/examples/coding_agent)
 
 ---
 
@@ -169,7 +169,7 @@ IF governing law differs from client's jurisdiction THEN highlight dispute resol
 
 **ROI estimate:** A firm reviewing 500 contracts/month, each taking 4 attorney hours at $500/hr ($1M/month). Improving recall from 85% to 95% prevents an average of 2 missed high-risk clauses/month at $500K potential exposure each = $1M risk reduction/month. Reducing review time by 30% saves $300K/month.
 
-**Example:** [`examples/legal_agent/`](https://github.com/asobi-labs/agentloops/tree/main/examples/legal_agent)
+**Example:** [`examples/legal_agent/`](https://github.com/mhollweck/agentloops/tree/main/examples/legal_agent)
 
 ---
 
@@ -271,7 +271,7 @@ IF same alert fires 3+ times in 24 hours THEN create a follow-up ticket for perm
 
 **ROI estimate:** A company with 500 incidents/month and 45-minute average MTTR. Reducing MTTR by 30% (to 31 minutes) saves 116 engineer-hours/month. At $200K salary, that's $13K/month. More importantly: reducing customer-facing incidents by 20% through better auto-remediation prevents $200K+/month in SLA penalties and churn.
 
-**Example:** [`examples/devops_agent/`](https://github.com/asobi-labs/agentloops/tree/main/examples/devops_agent)
+**Example:** [`examples/devops_agent/`](https://github.com/mhollweck/agentloops/tree/main/examples/devops_agent)
 
 ---
 
@@ -305,7 +305,7 @@ IF product has > 15% return rate THEN show size guide/comparison prominently -- 
 
 **ROI estimate:** An e-commerce site with $10M monthly GMV. Improving conversion by 0.5% (from 3% to 3.5%) adds $500K/month in revenue. Reducing return rate by 3 percentage points (from 12% to 9%) saves $300K/month in reverse logistics. Net: $800K/month incremental value.
 
-**Example:** [`examples/ecommerce_agent/`](https://github.com/asobi-labs/agentloops/tree/main/examples/ecommerce_agent)
+**Example:** [`examples/ecommerce_agent/`](https://github.com/mhollweck/agentloops/tree/main/examples/ecommerce_agent)
 
 ---
 
@@ -339,7 +339,7 @@ IF new regulation published THEN flag all transactions in affected category for 
 
 **ROI estimate:** A bank processing 10,000 compliance alerts/month at $50/alert investigation cost ($500K/month). Reducing false positives by 40% saves $200K/month in analyst time. Improving true positive rate by 15% catches an additional $2M+/year in suspicious activity, avoiding regulatory fines of $10M+ (average BSA/AML penalty).
 
-**Example:** [`examples/compliance_agent/`](https://github.com/asobi-labs/agentloops/tree/main/examples/compliance_agent)
+**Example:** [`examples/compliance_agent/`](https://github.com/mhollweck/agentloops/tree/main/examples/compliance_agent)
 
 ---
 

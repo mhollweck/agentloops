@@ -6,7 +6,7 @@ older than 21 days, but never prune high-confidence rules or recently validated 
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from agentloops.models import Convention, Rule
@@ -43,7 +43,7 @@ class Forgetter:
         Returns:
             Dict with 'rules_pruned' and 'conventions_pruned' — lists of IDs.
         """
-        cutoff = datetime.utcnow() - timedelta(days=max_age_days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=max_age_days)
         pruned: dict[str, list[str]] = {
             "rules_pruned": [],
             "conventions_pruned": [],

@@ -186,4 +186,4 @@ When you call `enhance_prompt()`:
 - **[API Reference](api-reference.md)** -- every class and method documented
 - **[Integration Guide](integrations.md)** -- use with LangChain, CrewAI, OpenAI, Anthropic
 - **[Industry Use Cases](verticals.md)** -- see how AgentLoops applies to your domain
-- **[Examples](https://github.com/asobi-labs/agentloops/tree/main/examples)** -- working code for 10 verticals
+- **[Examples](https://github.com/mhollweck/agentloops/tree/main/examples)** -- working code for 10 verticals

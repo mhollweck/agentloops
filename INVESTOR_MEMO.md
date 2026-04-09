@@ -79,4 +79,4 @@ LangChain proved the playbook: open-source Python library -> developer adoption 
 
 *AgentLoops -- Your agents have memory. Now give them a brain.*
 
-[github.com/asobi-labs/agentloops](https://github.com/asobi-labs/agentloops) | [agentloops.dev](https://agentloops.dev)
+[github.com/mhollweck/agentloops](https://github.com/mhollweck/agentloops) | [agentloops.dev](https://agentloops.dev)

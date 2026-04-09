@@ -1,1 +1,1 @@
-# Framework adapters (LangChain, CrewAI, etc.) — coming in v0.2
+"""Framework adapters for LangChain, CrewAI, and other agent frameworks."""

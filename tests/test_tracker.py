@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from agentloops.models import Run
 from agentloops.tracker import Tracker
@@ -116,7 +116,7 @@ class TestImprovementCurve:
 
     def test_improvement_curve_avg_score(self, storage):
         tracker = Tracker(storage, "test-agent")
-        base_time = datetime.utcnow() - timedelta(days=5)
+        base_time = datetime.now(timezone.utc) - timedelta(days=5)
         for i in range(5):
             run = Run(
                 input=f"input {i}",

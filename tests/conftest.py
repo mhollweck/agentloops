@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -20,7 +20,7 @@ def storage(tmp_path):
 def sample_runs(storage):
     """Create and persist a set of sample runs with varied outcomes."""
     runs = []
-    base_time = datetime.utcnow() - timedelta(days=10)
+    base_time = datetime.now(timezone.utc) - timedelta(days=10)
     for i in range(10):
         run = Run(
             input=f"test input {i}",
@@ -63,8 +63,8 @@ def old_rule(storage):
     rule = Rule(
         text="IF old condition THEN old action",
         confidence=0.2,
-        created_at=(datetime.utcnow() - timedelta(days=30)).isoformat(),
-        last_validated=(datetime.utcnow() - timedelta(days=30)).isoformat(),
+        created_at=(datetime.now(timezone.utc) - timedelta(days=30)).isoformat(),
+        last_validated=(datetime.now(timezone.utc) - timedelta(days=30)).isoformat(),
     )
     storage.save_rule(rule)
     return rule
@@ -76,8 +76,8 @@ def high_confidence_old_rule(storage):
     rule = Rule(
         text="IF important condition THEN critical action",
         confidence=0.9,
-        created_at=(datetime.utcnow() - timedelta(days=30)).isoformat(),
-        last_validated=(datetime.utcnow() - timedelta(days=30)).isoformat(),
+        created_at=(datetime.now(timezone.utc) - timedelta(days=30)).isoformat(),
+        last_validated=(datetime.now(timezone.utc) - timedelta(days=30)).isoformat(),
     )
     storage.save_rule(rule)
     return rule
@@ -89,8 +89,8 @@ def old_convention(storage):
     conv = Convention(
         text="Always greet the user by name",
         source="manual",
-        created_at=(datetime.utcnow() - timedelta(days=30)).isoformat(),
-        updated_at=(datetime.utcnow() - timedelta(days=30)).isoformat(),
+        created_at=(datetime.now(timezone.utc) - timedelta(days=30)).isoformat(),
+        updated_at=(datetime.now(timezone.utc) - timedelta(days=30)).isoformat(),
     )
     storage.save_convention(conv)
     return conv

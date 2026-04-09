@@ -1,6 +1,6 @@
 # Show HN: AgentLoops -- Self-learning loops for AI agents (7 mechanisms, battle-tested)
 
-**Repo:** https://github.com/asobi-labs/agentloops
+**Repo:** https://github.com/mhollweck/agentloops
 **Landing page:** https://agentloops.dev
 **Install:** `pip install agentloops`
 

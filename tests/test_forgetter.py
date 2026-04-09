@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from agentloops.forgetter import Forgetter
 from agentloops.models import Convention, Rule
@@ -18,8 +18,8 @@ class TestDecayStrategy:
         rule = Rule(
             text="Recent rule",
             confidence=0.3,
-            created_at=datetime.utcnow().isoformat(),
-            last_validated=datetime.utcnow().isoformat(),
+            created_at=datetime.now(timezone.utc).isoformat(),
+            last_validated=datetime.now(timezone.utc).isoformat(),
         )
         storage.save_rule(rule)
 
@@ -36,8 +36,8 @@ class TestDecayStrategy:
         conv = Convention(
             text="Recent convention",
             source="manual",
-            created_at=datetime.utcnow().isoformat(),
-            updated_at=datetime.utcnow().isoformat(),
+            created_at=datetime.now(timezone.utc).isoformat(),
+            updated_at=datetime.now(timezone.utc).isoformat(),
         )
         storage.save_convention(conv)
 
@@ -51,8 +51,8 @@ class TestImportanceStrategy:
         rule = Rule(
             text="Low confidence rule",
             confidence=0.1,
-            created_at=datetime.utcnow().isoformat(),
-            last_validated=(datetime.utcnow() - timedelta(days=30)).isoformat(),
+            created_at=datetime.now(timezone.utc).isoformat(),
+            last_validated=(datetime.now(timezone.utc) - timedelta(days=30)).isoformat(),
         )
         storage.save_rule(rule)
 
@@ -64,8 +64,8 @@ class TestImportanceStrategy:
         rule = Rule(
             text="Medium confidence rule",
             confidence=0.5,
-            created_at=datetime.utcnow().isoformat(),
-            last_validated=(datetime.utcnow() - timedelta(days=30)).isoformat(),
+            created_at=datetime.now(timezone.utc).isoformat(),
+            last_validated=(datetime.now(timezone.utc) - timedelta(days=30)).isoformat(),
         )
         storage.save_rule(rule)
 
@@ -107,8 +107,8 @@ class TestHybridStrategy:
         rule = Rule(
             text="Very low confidence",
             confidence=0.1,
-            created_at=datetime.utcnow().isoformat(),
-            last_validated=(datetime.utcnow() - timedelta(days=30)).isoformat(),
+            created_at=datetime.now(timezone.utc).isoformat(),
+            last_validated=(datetime.now(timezone.utc) - timedelta(days=30)).isoformat(),
         )
         storage.save_rule(rule)
 
@@ -123,8 +123,8 @@ class TestRecentlyValidatedProtection:
         rule = Rule(
             text="Old but recently validated",
             confidence=0.4,
-            created_at=(datetime.utcnow() - timedelta(days=60)).isoformat(),
-            last_validated=datetime.utcnow().isoformat(),
+            created_at=(datetime.now(timezone.utc) - timedelta(days=60)).isoformat(),
+            last_validated=datetime.now(timezone.utc).isoformat(),
         )
         storage.save_rule(rule)
 
