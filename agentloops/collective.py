@@ -4,17 +4,18 @@ This is the core of AgentLoops' network effect. Every agent contributes
 anonymized rules and outcome stats. In return, agents get access to
 proven rules from all agents of the same type.
 
-Privacy model (privacy-first, opt-in only):
-  - REQUIRES: Explicit opt-in via collective=True in constructor
+Privacy model:
+  - ON BY DEFAULT when agent_type is set (like Homebrew analytics)
+  - OPT-OUT: AgentLoops(..., collective=False) or agentloops.collective.opt_out()
   - SENT: generalized rule patterns (company/product names stripped), confidence, outcome stats
   - NEVER SENT: raw inputs, raw outputs, metadata, company names, user data
+  - SANITIZED: company names, URLs, emails, dollar amounts stripped from rule text
   - THRESHOLD: Rules only enter the global pool after 5+ independent contributors submit similar patterns
-  - OPT-OUT: agentloops.collective.opt_out() disables everything globally
 
 Tiers:
-  - Free: Can opt-in to contribute. Gets static seed rules (bundled with package).
-  - Pro: Can opt-in to contribute. Gets LIVE global rules on every enhance_prompt() call.
-  - Enterprise: Can opt-in to contribute. Live rules + benchmarking + custom filters.
+  - Free: Contributes + gets static seed rules (bundled with package).
+  - Pro: Contributes + gets LIVE global rules (updated daily from the network).
+  - Enterprise: Contributes (can opt out) + live rules + benchmarking + custom filters.
 """
 
 from __future__ import annotations
@@ -48,7 +49,7 @@ class CollectiveClient:
         agent_type: str | None = None,
         api_key: str | None = None,
         api_url: str | None = None,
-        enabled: bool = False,  # OPT-IN ONLY — must explicitly enable
+        enabled: bool = True,  # On by default when agent_type is set
     ) -> None:
         """Initialize the collective intelligence client.
 
@@ -56,7 +57,8 @@ class CollectiveClient:
             agent_type: Agent type for global rule matching.
             api_key: AgentLoops platform key (al_xxx format) for Pro/Enterprise.
             api_url: Override the collective API endpoint.
-            enabled: Must be True to participate. Privacy-first: disabled by default.
+            enabled: Contribution is on by default when agent_type is set.
+                     Opt out with collective=False or agentloops.collective.opt_out().
         """
         self._agent_type = agent_type
         self._api_key = api_key

@@ -14,8 +14,11 @@ Usage:
 
 from __future__ import annotations
 
+import logging
 import os
 import statistics
+
+logger = logging.getLogger("agentloops")
 from pathlib import Path
 from typing import Any
 
@@ -57,7 +60,7 @@ class AgentLoops:
         user_id: str | None = None,
         llm_provider: str = "anthropic",
         llm_fn: LLMCallable | None = None,
-        collective: bool = False,
+        collective: bool | None = None,
     ) -> None:
         """Initialize AgentLoops.
 
@@ -76,8 +79,9 @@ class AgentLoops:
             user_id: User ID for multi-tenant scoping (for storage="supabase").
             llm_provider: LLM provider: "anthropic" (default), "openai", or "custom".
             llm_fn: Custom LLM function(prompt) -> str. Required when llm_provider="custom".
-            collective: Opt-in to Collective Intelligence. When True, anonymized rules
-                are contributed to the global network. Privacy-first: disabled by default.
+            collective: Collective Intelligence participation. Defaults to True when
+                agent_type is set (anonymized, sanitized rules contribute to the network).
+                Set False to opt out. Or call agentloops.collective.opt_out() globally.
         """
         # Resolve supabase config from env vars if not provided
         supabase_url = supabase_url or os.environ.get("AGENTLOOPS_SUPABASE_URL")
@@ -134,12 +138,19 @@ class AgentLoops:
         self._rule_engine._call_llm = _llm_client
         self._convention_store._call_llm = _llm_client
 
-        # Initialize collective intelligence client (opt-in only)
+        # Initialize collective intelligence client
+        # Default: on when agent_type is set, off otherwise
+        collective_enabled = collective if collective is not None else (agent_type is not None)
         self._collective = CollectiveClient(
             agent_type=agent_type,
             api_key=api_key if api_key and api_key.startswith("al_") else None,
-            enabled=collective,  # Must explicitly opt in
+            enabled=collective_enabled,
         )
+        if collective_enabled and agent_type:
+            logger.info(
+                "AgentLoops: Collective Intelligence active (anonymized, sanitized). "
+                "Opt out: AgentLoops(..., collective=False) or agentloops.collective.opt_out()"
+            )
 
         # Load seed rules for the agent type (only if no rules exist yet)
         if agent_type and not self._storage.get_rules(active_only=True):
