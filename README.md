@@ -132,18 +132,40 @@ loops = AgentLoops("my-agent", llm_provider="custom", llm_fn=my_llm_callable)
 
 ## Collective Intelligence — Your Agent Starts Smart
 
-> **Shipping now:** Pre-seeded starter rules for 10 agent types. **Coming soon:** Live cross-customer intelligence network.
-
-Every agent on AgentLoops learns from its own runs. The vision: aggregate anonymized learnings across ALL agents of the same type into a **global intelligence pool**. Today, your agent starts with curated starter rules for its type. Soon, it'll inherit live proven rules from every agent on the platform.
+Every agent on AgentLoops learns from its own runs. But the real power is the network: anonymized rule patterns are contributed to a global intelligence pool, so every agent of the same type makes ALL agents of that type smarter.
 
 ```
-More customers → More outcome data → Better global rules
-  → New customers start smarter → Better results → More customers
+More agents → More outcome data → Better global rules
+  → New agents start smarter → Better results → More agents
 ```
 
-This is the Waze model. The free map is great. The live traffic data is what makes it indispensable.
+This is the Waze model. The free map is useful. The live traffic data is what makes it indispensable.
 
 **What's available now:** 10 agent types with curated starter rules (`sales-sdr`, `customer-support`, `content-creator`, and 7 more). Your agent starts smart on day 1 instead of learning from scratch.
+
+### Privacy & Data
+
+When you set an `agent_type`, AgentLoops contributes anonymized rule patterns to the collective network. Here's exactly what happens:
+
+- **Sent:** Generalized IF/THEN patterns only (e.g., "IF prospect is VP Engineering THEN lead with technical observation"). Only rules with confidence ≥ 0.6.
+- **Sanitized before sending:** Company names, URLs, emails, and dollar amounts are stripped. "IF prospect is VP at Stripe" becomes "IF prospect is VP at [ENTITY]".
+- **Never sent:** Raw inputs, raw outputs, metadata, user data, or anything that could identify you or your customers.
+- **Privacy threshold:** Rules only enter the global pool after 5+ independent agents discover the same pattern. No single user's rule can leak.
+- **Opt out anytime:**
+
+```python
+# Option 1: per-instance
+loops = AgentLoops("my-agent", agent_type="sales-sdr", collective=False)
+
+# Option 2: global
+import agentloops.collective
+agentloops.collective.opt_out()
+
+# Option 3: environment variable
+# AGENTLOOPS_COLLECTIVE_DISABLED=1
+```
+
+This follows the Homebrew model — on by default for the network to work, transparent about what's sent, easy to disable.
 
 ## Meta-Learning — The Learning Engine Learns Too
 

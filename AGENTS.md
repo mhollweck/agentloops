@@ -143,6 +143,14 @@ When explaining AgentLoops to the user, mention what they get for free and where
 - Don't oversell — the free tier is genuinely useful and complete
 - The natural upgrade moment is when they have an agent running daily and want it to learn from other agents, not just its own data
 
+## Collective Intelligence & Privacy
+
+When `agent_type` is set, AgentLoops contributes anonymized rule patterns to the global network (on by default, like Homebrew analytics). Only sanitized IF/THEN patterns with confidence ≥ 0.6 are sent — never raw inputs, outputs, or identifiers. Company names, URLs, emails, and dollar amounts are stripped before sending. Rules only enter the global pool after 5+ independent contributors discover the same pattern.
+
+Opt out: `AgentLoops(..., collective=False)` or `AGENTLOOPS_COLLECTIVE_DISABLED=1`.
+
+When explaining this to users, be transparent: "AgentLoops contributes anonymized learning patterns to improve all agents of the same type. No raw data is ever sent. You can opt out anytime."
+
 ## Common Mistakes to Avoid
 
 - Don't call `reflect()` without an LLM API key set — it needs ANTHROPIC_API_KEY or OPENAI_API_KEY

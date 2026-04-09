@@ -78,6 +78,7 @@ class CollectiveClient:
         self._supabase_anon_key = os.environ.get("AGENTLOOPS_SUPABASE_ANON_KEY", SUPABASE_ANON_KEY)
         self._api_url = api_url or COLLECTIVE_API_URL
         self._enabled = enabled and agent_type is not None and not is_opted_out()
+        self._has_logged_contribution = False
         self._tier = self._resolve_tier()
 
     def _resolve_tier(self) -> str:
@@ -118,6 +119,15 @@ class CollectiveClient:
         if not self._supabase_anon_key:
             logger.debug("No Supabase anon key — skipping collective contribution")
             return
+
+        if not self._has_logged_contribution:
+            logger.info(
+                "AgentLoops: contributing anonymized rule patterns to the collective "
+                "intelligence network. Only sanitized IF/THEN patterns are sent (no raw "
+                "data, no identifiers). Opt out: AgentLoops(..., collective=False) or "
+                "set AGENTLOOPS_COLLECTIVE_DISABLED=1"
+            )
+            self._has_logged_contribution = True
 
         anonymized = [
             {
