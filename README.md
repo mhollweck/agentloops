@@ -393,7 +393,7 @@ AgentLoops doesn't replace memory — it sits on top of it. Memory stores what h
 
 - [Discord](https://discord.gg/mwQZQCRp) -- questions, showcase, feedback
 - [GitHub Issues](https://github.com/mhollweck/agentloops/issues) -- bugs and feature requests
-- [Twitter/X](https://x.com/mariahollweck) -- updates and announcements
+
 
 ## Contributing
 
@@ -406,5 +406,5 @@ MIT
 ---
 
 <p align="center">
-  Built by <a href="https://x.com/mariahollweck">Maria Hollweck</a> at <a href="https://asobi-labs.com">Asobi Labs</a>
+  Built by Maria Hollweck at <a href="https://asobi-labs.com">Asobi Labs</a>
 </p>
