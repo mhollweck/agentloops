@@ -65,6 +65,7 @@ class Reflector:
         self._agent_name = agent_name
         self._model = model
         self._api_key = api_key
+        self._meta_guidance: list[str] = []  # Injected by MetaLearner
 
     def reflect(self, last_n: int = 5) -> Reflection:
         """Run a reflection pass over recent agent runs.
@@ -118,12 +119,20 @@ class Reflector:
             f"- {c.text}" for c in conventions
         ) or "No conventions yet."
 
-        return _REFLECTION_PROMPT.format(
+        prompt = _REFLECTION_PROMPT.format(
             agent_name=self._agent_name,
             runs_text=runs_text,
             rules_text=rules_text,
             conventions_text=conventions_text,
         )
+
+        # Inject meta-learnings (what has worked in past reflections)
+        if self._meta_guidance:
+            guidance = "\n".join(f"- {g}" for g in self._meta_guidance)
+            prompt += f"\n\n## Meta-Learning (from past reflection performance)\n{guidance}\n"
+            self._meta_guidance = []  # Reset after use
+
+        return prompt
 
     def _call_llm(self, prompt: str) -> dict[str, Any]:
         """Call the Anthropic API and parse the JSON response."""

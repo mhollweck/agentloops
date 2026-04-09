@@ -26,6 +26,7 @@ from agentloops.collective import CollectiveClient, is_opted_out
 from agentloops.convention_store import ConventionStore
 from agentloops.forgetter import Forgetter
 from agentloops.llm import LLMCallable, create_llm_client
+from agentloops.meta_learner import MetaLearner
 from agentloops.models import Reflection, Run
 from agentloops.quality_gate import GateResult, QualityGate
 from agentloops.reflector import Reflector
@@ -132,6 +133,7 @@ class AgentLoops:
         self._convention_store = ConventionStore(self._storage, agent_name, reflection_model, api_key)
         self._forgetter = Forgetter(self._storage)
         self._quality_gate = QualityGate(self._storage, agent_name)
+        self._meta_learner = MetaLearner(self._storage, agent_name)
 
         # Inject the shared LLM client into components that use it
         self._reflector._call_llm = _llm_client
@@ -192,6 +194,18 @@ class AgentLoops:
             metadata=metadata,
             rules_applied=active_rule_ids,
         )
+
+        # Feed the meta-learner: track outcome for each active rule
+        try:
+            score = float(outcome)
+            for rule_id in active_rule_ids:
+                self._meta_learner.track_outcome_with_rule(rule_id, score)
+        except (ValueError, TypeError):
+            # Binary outcomes: success=1.0, failure=0.0
+            score_val = 1.0 if outcome == "success" else 0.0 if outcome == "failure" else None
+            if score_val is not None:
+                for rule_id in active_rule_ids:
+                    self._meta_learner.track_outcome_with_rule(rule_id, score_val)
 
         if self.auto_learn:
             auto_results = self._check_auto_learn(run)
@@ -282,13 +296,41 @@ class AgentLoops:
         Returns:
             A Reflection with critique, suggested rules, and confidence scores.
         """
+        # Inject meta-rules into the reflector's prompt (if we have enough data)
+        meta_rules = self._meta_learner.get_meta_rules()
+        if meta_rules:
+            # Temporarily enhance the reflection prompt with meta-learnings
+            self._reflector._meta_guidance = meta_rules
+
         reflection = self._reflector.reflect(last_n=last_n)
+
+        # Track new rules for meta-learning
+        recent_outcomes = self._get_recent_outcome_scores(20)
+        for rule_text in reflection.suggested_rules:
+            conf = reflection.confidence_scores.get(rule_text, 0.5)
+            from agentloops.models import Rule
+            temp_rule = Rule(text=rule_text, confidence=conf)
+            self._meta_learner.track_rule_created(temp_rule, recent_outcomes)
 
         # Contribute validated rules to the collective network (non-blocking)
         active_rules = self._rule_engine.active()
         self._collective.contribute_rules(active_rules)
 
         return reflection
+
+    def _get_recent_outcome_scores(self, n: int) -> list[float]:
+        """Extract numeric outcome scores from recent runs."""
+        runs = self._tracker.get_runs(last_n=n)
+        scores = []
+        for r in runs:
+            try:
+                scores.append(float(r.outcome))
+            except (ValueError, TypeError):
+                if r.outcome == "success":
+                    scores.append(1.0)
+                elif r.outcome == "failure":
+                    scores.append(0.0)
+        return scores
 
     def enhance_prompt(self, base_prompt: str) -> str:
         """Inject active rules and conventions into an agent prompt.
@@ -381,6 +423,11 @@ class AgentLoops:
     def tracker(self) -> Tracker:
         """Access the tracker directly."""
         return self._tracker
+
+    @property
+    def meta_learner(self) -> MetaLearner:
+        """Access the meta-learner — tracks what learning strategies work best."""
+        return self._meta_learner
 
     @property
     def agent_name(self) -> str:
