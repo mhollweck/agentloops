@@ -43,25 +43,18 @@ pip install agentloops
 ```python
 from agentloops import AgentLoops
 
-loops = AgentLoops("sales-outreach")
+loops = AgentLoops("sales-outreach", agent_type="sales-sdr", api_key="al_xxx")
 
-# Track every agent run
+# Track every agent run — learning happens automatically
 loops.track(input=task, output=result, outcome="meeting_booked")
-
-# Agent reflects on what's working
-reflection = loops.reflect()
 
 # Inject learned rules into your prompt
 enhanced_prompt = loops.enhance_prompt(base_prompt)
-
-# Evolve conventions weekly
-loops.conventions.evolve()
-
-# Forget stale patterns
-loops.forget(max_age_days=21)
 ```
 
-That's it. Five methods. Your agent now learns from every run.
+That's it. Two methods. Your agent now learns from every run.
+
+Learning triggers automatically after enough outcomes. You can also call `reflect()`, `evolve()`, and `forget()` manually for fine-grained control.
 
 ## Before vs After
 
@@ -78,10 +71,11 @@ That's it. Five methods. Your agent now learns from every run.
 
 ```python
 # Day 1: Agent sends cold email, gets ignored
-# Day 2: reflect() → "Emails without personalization get 0% reply rate"
-# Day 3: enhance_prompt() injects: "IF cold outreach THEN personalize first line"
-# Day 7: evolve() → Convention: "Always reference prospect's recent work"
-# Day 30: Agent books mass meetings. You didn't touch the prompt once.
+# Day 2-9: Agent keeps tracking outcomes...
+# Day 10: Auto-reflection triggers → "Emails without personalization get 0% reply rate"
+# Day 11: enhance_prompt() injects: "IF cold outreach THEN personalize first line"
+# Day 50: Auto-evolution → Convention: "Always reference prospect's recent work"
+# Day 51: Agent books meetings. You never touched the prompt.
 ```
 
 ## The 7 Mechanisms

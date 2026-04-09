@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from agentloops.core import AgentLoops
-from agentloops.models import Rule
+from agentloops.models import Reflection, Rule
 from agentloops.storage.file import FileStorage
 
 
@@ -114,3 +114,47 @@ class TestForget:
         assert "conventions_pruned" in result
         assert isinstance(result["rules_pruned"], list)
         assert isinstance(result["conventions_pruned"], list)
+
+
+class TestAutoLearn:
+    def test_auto_learn_triggers_reflection_after_threshold(self, tmp_path):
+        loops = AgentLoops(
+            "test-agent",
+            storage_path=tmp_path / ".agentloops",
+            auto_learn=True,
+            reflection_threshold=3,
+        )
+        fake_reflection = Reflection(
+            agent_name="test-agent",
+            critique="Looks good",
+            suggested_rules=["IF fast THEN reward"],
+            confidence_scores={"IF fast THEN reward": 0.8},
+        )
+        with patch.object(loops._reflector, "reflect", return_value=fake_reflection):
+            # First two runs should NOT trigger reflection
+            run1 = loops.track(input="a", output="b", outcome="success")
+            assert "auto_learn" not in run1.metadata
+            run2 = loops.track(input="c", output="d", outcome="success")
+            assert "auto_learn" not in run2.metadata
+            # Third run hits threshold — should trigger
+            run3 = loops.track(input="e", output="f", outcome="success")
+            assert "auto_learn" in run3.metadata
+            assert run3.metadata["auto_learn"]["reflection"]["trigger"] == "threshold"
+
+    def test_auto_learn_disabled_skips_reflection(self, tmp_path):
+        loops = AgentLoops(
+            "test-agent",
+            storage_path=tmp_path / ".agentloops",
+            auto_learn=False,
+            reflection_threshold=1,
+        )
+        run = loops.track(input="a", output="b", outcome="success")
+        assert "auto_learn" not in run.metadata
+
+    def test_agent_type_stored(self, tmp_path):
+        loops = AgentLoops(
+            "test-agent",
+            storage_path=tmp_path / ".agentloops",
+            agent_type="customer-support",
+        )
+        assert loops.agent_type == "customer-support"

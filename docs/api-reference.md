@@ -17,20 +17,28 @@ from agentloops import AgentLoops
 ```python
 AgentLoops(
     agent_name: str,
+    agent_type: str | None = None,
+    api_key: str | None = None,
     storage: str | BaseStorage = "file",
     storage_path: str | Path | None = None,
     reflection_model: str = "claude-sonnet-4-6",
-    api_key: str | None = None,
+    auto_learn: bool = True,
+    reflection_threshold: int = 10,
+    evolution_interval: int = 50,
 )
 ```
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `agent_name` | `str` | required | Unique name for this agent. Used as the storage namespace. |
-| `storage` | `str \| BaseStorage` | `"file"` | Storage backend. `"file"` for JSON file storage, or pass a `BaseStorage` instance. |
+| `agent_type` | `str \| None` | `None` | Agent type for pre-seeded rules and cross-customer intelligence. Examples: `"sales-sdr"`, `"support-agent"`, `"content-writer"`. When set, the agent starts with domain-specific rules instead of learning from scratch. |
+| `api_key` | `str \| None` | `None` | AgentLoops API key (format: `al_xxx`). Enables cloud storage, auto-learn, dashboard access, and cross-customer intelligence. Without an API key, data is stored locally and learning must be triggered manually. Also falls back to `AGENTLOOPS_API_KEY` env var. For the Anthropic reflection model, set `ANTHROPIC_API_KEY` separately. |
+| `storage` | `str \| BaseStorage` | `"file"` | Storage backend. `"file"` for JSON file storage, or pass a `BaseStorage` instance. When `api_key` is set, defaults to cloud storage. |
 | `storage_path` | `str \| Path \| None` | `".agentloops"` | Directory for file storage. |
 | `reflection_model` | `str` | `"claude-sonnet-4-6"` | Anthropic model for reflection and rule generation. |
-| `api_key` | `str \| None` | `None` | Anthropic API key. Falls back to `ANTHROPIC_API_KEY` env var. |
+| `auto_learn` | `bool` | `True` | When `True` and `api_key` is set, automatically triggers `reflect()`, `evolve()`, and `forget()` based on the configured thresholds. When `False` or no `api_key`, you must call these methods manually. |
+| `reflection_threshold` | `int` | `10` | Number of tracked runs before auto-reflection triggers. Only applies when `auto_learn=True`. After each reflection, the counter resets. Lower values mean faster learning but more LLM calls. |
+| `evolution_interval` | `int` | `50` | Number of tracked runs between automatic convention evolution cycles. Only applies when `auto_learn=True`. Evolution promotes high-confidence rules to conventions, resolves contradictions, and merges overlapping patterns. |
 
 ### Methods
 

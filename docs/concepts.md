@@ -50,7 +50,42 @@ Before diving into individual mechanisms, here's how they fit together:
 
 ---
 
-## 1. Self-Reflection
+## Auto-Detection
+
+When `auto_learn=True` (the default for Pro/Enterprise tiers), AgentLoops automatically triggers learning mechanisms without manual calls. Four triggers drive this:
+
+### 1. Outcome Threshold
+
+After a configurable number of tracked runs (default: 10), AgentLoops automatically triggers `reflect()` on the accumulated data. This ensures the agent starts learning as soon as there's enough signal, without you scheduling reflection manually.
+
+**Config:** `reflection_threshold=10` on the constructor.
+
+### 2. Spike Detection
+
+AgentLoops monitors your agent's rolling success rate. When the current window deviates by more than 2 standard deviations from the rolling average -- either a sudden drop or a sudden improvement -- it triggers a focused reflection on the runs in that window. This catches regressions fast and identifies what caused a breakthrough.
+
+**Example:** Your agent's success rate has been steady at 70%. Suddenly it drops to 40%. Spike detection fires, reflects on recent runs, and generates a rule like: "IF prospect is in healthcare THEN avoid technical jargon -- because the last 5 healthcare prospects all churned after receiving jargon-heavy emails."
+
+### 3. Pattern Clustering *(coming soon)*
+
+Groups similar inputs that produced different outcomes and asks: "Why did the same type of task succeed sometimes and fail others?" This surfaces hidden variables that simple reflection misses.
+
+**Example:** 20 cold emails to CTOs -- 12 succeeded, 8 failed. Clustering reveals the successes all referenced a recent blog post or conference talk. The failures were generic. Rule generated: "IF outreach to CTO THEN reference their recent public content."
+
+### 4. Convention Contradiction
+
+When auto-evolution runs and detects that two active conventions give conflicting advice, it automatically triggers contradiction resolution. The system picks the convention with stronger evidence and deactivates or merges the weaker one.
+
+**Example:**
+- Convention A: "Always include pricing in the first email" (from 3 weeks ago, 4 supporting runs)
+- Convention B: "Never mention pricing before qualification" (from this week, 12 supporting runs)
+- Resolution: Convention B wins. Convention A is marked `contradicted`.
+
+With auto-detection, the standard workflow is just `track()` and `enhance_prompt()`. Everything else happens behind the scenes.
+
+---
+
+
 
 **What it does:** After a batch of runs, an LLM analyzes what worked, what failed, and why.
 

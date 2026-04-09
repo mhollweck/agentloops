@@ -19,20 +19,34 @@ export ANTHROPIC_API_KEY=sk-ant-...
 ```python
 from agentloops import AgentLoops
 
-loops = AgentLoops("my-agent")
+loops = AgentLoops("my-agent", agent_type="sales-sdr", api_key="al_xxx")
 ```
 
-That's it. Zero config. AgentLoops creates a `.agentloops/my-agent/` directory in your working folder to store runs, rules, conventions, and reflections as JSON files.
+That's it. AgentLoops creates a `.agentloops/my-agent/` directory in your working folder to store runs, rules, conventions, and reflections as JSON files. With an `api_key`, data syncs to the cloud and learning triggers automatically.
+
+### Three Tiers
+
+| Tier | Usage | What you get |
+|------|-------|-------------|
+| **Free** | `AgentLoops("my-agent")` | Local storage, manual triggers for `reflect()`, `evolve()`, `forget()` |
+| **Pro** | `AgentLoops("my-agent", agent_type="sales-sdr", api_key="al_xxx")` | Cloud storage, auto-learn, dashboard, pre-seeded rules for your agent type |
+| **Enterprise** | Same constructor + org config | Cross-customer intelligence, benchmarking, team management |
+
+**Free** is fully functional -- you call `reflect()`, `evolve()`, and `forget()` manually. **Pro** adds automatic learning triggers (reflection after N outcomes, spike detection, evolution on schedule) plus a dashboard to visualize your agent's improvement. **Enterprise** adds cross-customer intelligence (anonymized patterns from all agents of the same type) and team features.
 
 ### Configuration Options
 
 ```python
 loops = AgentLoops(
     agent_name="my-agent",
+    agent_type="sales-sdr",             # Agent type for pre-seeded rules and cross-customer intelligence.
+    api_key="al_xxx",                   # AgentLoops API key. Enables cloud storage, auto-learn, dashboard.
     storage="file",                     # Default. Pass a BaseStorage instance for custom backends.
     storage_path=".agentloops",         # Where to store data. Defaults to ".agentloops".
     reflection_model="claude-sonnet-4-6",  # Model for reflection and rule generation.
-    api_key=None,                       # Uses ANTHROPIC_API_KEY env var if not set.
+    auto_learn=True,                    # Auto-trigger reflect/evolve/forget. Requires api_key.
+    reflection_threshold=10,            # Number of runs before auto-reflection triggers.
+    evolution_interval=50,              # Number of runs between auto-evolution cycles.
 )
 ```
 
@@ -126,7 +140,7 @@ Your agent now benefits from everything it has learned, without you manually rew
 from agentloops import AgentLoops
 
 # Initialize
-loops = AgentLoops("sales-outreach")
+loops = AgentLoops("sales-outreach", agent_type="sales-sdr", api_key="al_xxx")
 
 # Simulate a few agent runs
 loops.track(

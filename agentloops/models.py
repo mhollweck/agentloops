@@ -25,6 +25,7 @@ class Run:
     outcome: str  # "success", "failure", or a numeric score
     agent_name: str
     id: str = field(default_factory=_new_id)
+    agent_type: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
     rules_applied: list[str] = field(default_factory=list)
     created_at: str = field(default_factory=_now)
@@ -33,6 +34,7 @@ class Run:
         return {
             "id": self.id,
             "agent_name": self.agent_name,
+            "agent_type": self.agent_type,
             "input": self.input,
             "output": self.output,
             "outcome": self.outcome,
@@ -46,6 +48,7 @@ class Run:
         return cls(
             id=d["id"],
             agent_name=d["agent_name"],
+            agent_type=d.get("agent_type"),
             input=d["input"],
             output=d["output"],
             outcome=d["outcome"],

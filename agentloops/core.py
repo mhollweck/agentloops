@@ -14,6 +14,7 @@ Usage:
 
 from __future__ import annotations
 
+import statistics
 from pathlib import Path
 from typing import Any
 
@@ -42,6 +43,10 @@ class AgentLoops:
         storage_path: str | Path | None = None,
         reflection_model: str = "claude-sonnet-4-6",
         api_key: str | None = None,
+        auto_learn: bool = True,
+        agent_type: str | None = None,
+        reflection_threshold: int = 10,
+        evolution_interval: int = 50,
     ) -> None:
         """Initialize AgentLoops.
 
@@ -51,8 +56,18 @@ class AgentLoops:
             storage_path: Directory for file storage. Defaults to ".agentloops".
             reflection_model: Anthropic model to use for reflection/rule generation.
             api_key: Anthropic API key. Uses ANTHROPIC_API_KEY env var if not set.
+            auto_learn: If True, automatically trigger reflection and evolution.
+            agent_type: Optional agent type for future pre-seeded global rules.
+            reflection_threshold: Number of new runs before auto-reflection triggers.
+            evolution_interval: Number of runs between auto-evolution triggers.
         """
         self._agent_name = agent_name
+        self.auto_learn = auto_learn
+        self.agent_type = agent_type
+        self._reflection_threshold = reflection_threshold
+        self._evolution_interval = evolution_interval
+        self._runs_since_last_reflection = 0
+        self._runs_since_last_evolution = 0
 
         # Initialize storage
         if isinstance(storage, str):
@@ -87,16 +102,94 @@ class AgentLoops:
             metadata: Optional key-value pairs (latency, tokens, etc.).
 
         Returns:
-            The persisted Run object.
+            The persisted Run object. If auto_learn is enabled and triggers fired,
+            the run will have 'auto_reflections' and/or 'auto_evolution' keys in
+            its metadata.
         """
         active_rule_ids = [r.id for r in self._rule_engine.active()]
-        return self._tracker.log_run(
+        run = self._tracker.log_run(
             input=input,
             output=output,
             outcome=outcome,
             metadata=metadata,
             rules_applied=active_rule_ids,
         )
+
+        if self.auto_learn:
+            auto_results = self._check_auto_learn(run)
+            if auto_results:
+                run.metadata["auto_learn"] = auto_results
+
+        return run
+
+    def _check_auto_learn(self, latest_run: Run) -> dict[str, Any]:
+        """Check auto-learning triggers and fire reflection/evolution as needed.
+
+        Triggers:
+        1. Outcome threshold: >= reflection_threshold new runs since last reflection.
+        2. Spike detection: latest outcome deviates >2 std devs from rolling average.
+        3. Periodic evolution: >= evolution_interval runs since last evolution.
+
+        Returns:
+            Dict with any auto-generated reflections, spike info, or evolution results.
+        """
+        results: dict[str, Any] = {}
+
+        self._runs_since_last_reflection += 1
+        self._runs_since_last_evolution += 1
+
+        # 1. Outcome threshold — auto-reflect after N new runs
+        if self._runs_since_last_reflection >= self._reflection_threshold:
+            reflection = self.reflect(last_n=self._reflection_threshold)
+            results["reflection"] = {
+                "trigger": "threshold",
+                "critique": reflection.critique,
+                "suggested_rules": reflection.suggested_rules,
+            }
+            self._runs_since_last_reflection = 0
+
+        # 2. Spike detection — outcome deviates >2 std devs from rolling average
+        try:
+            score = float(latest_run.outcome)
+            recent_runs = self._tracker.get_runs(last_n=20)
+            past_scores = []
+            for r in recent_runs:
+                if r.id == latest_run.id:
+                    continue
+                try:
+                    past_scores.append(float(r.outcome))
+                except (ValueError, TypeError):
+                    pass
+
+            if len(past_scores) >= 3:
+                mean = statistics.mean(past_scores)
+                stdev = statistics.stdev(past_scores)
+                if stdev > 0 and abs(score - mean) > 2 * stdev:
+                    # Spike detected — auto-reflect if we haven't already
+                    if "reflection" not in results:
+                        reflection = self.reflect(last_n=5)
+                        results["reflection"] = {
+                            "trigger": "spike",
+                            "critique": reflection.critique,
+                            "suggested_rules": reflection.suggested_rules,
+                        }
+                        self._runs_since_last_reflection = 0
+                    results["spike"] = {
+                        "score": score,
+                        "mean": round(mean, 4),
+                        "stdev": round(stdev, 4),
+                        "deviation": round(abs(score - mean) / stdev, 2),
+                    }
+        except (ValueError, TypeError):
+            pass  # Non-numeric outcome, skip spike detection
+
+        # 3. Periodic evolution
+        if self._runs_since_last_evolution >= self._evolution_interval:
+            evolution = self._convention_store.evolve()
+            results["evolution"] = evolution
+            self._runs_since_last_evolution = 0
+
+        return results
 
     def reflect(self, last_n: int = 5) -> Reflection:
         """Trigger reflection on recent runs.
