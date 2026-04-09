@@ -1,7 +1,7 @@
 """Forgetter — time-decay and importance-weighted memory pruning.
 
-Inspired by the selective forgetting mechanism in maria-os: prune memory entries
-older than 21 days, but never prune high-confidence rules or recently validated ones.
+Prune memory entries older than 21 days, but never prune high-confidence
+rules or recently validated ones. Inspired by cognitive memory architectures.
 """
 
 from __future__ import annotations

@@ -1,7 +1,7 @@
 """Reflector — evaluates agent runs and produces structured critiques.
 
-Inspired by the self-reflection mechanism in maria-os: after every agent run,
-evaluate what worked, what failed, and what rules should change.
+After every agent run, evaluate what worked, what failed, and what
+rules should change. Inspired by the Reflexion architecture (Shinn et al.).
 """
 
 from __future__ import annotations

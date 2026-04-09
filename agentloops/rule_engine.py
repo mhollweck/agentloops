@@ -1,7 +1,6 @@
 """Rule engine — converts performance data into IF/THEN decision rules.
 
-Inspired by the learnings.md pattern in maria-os: prescriptive rules derived
-from actual performance data, not opinions.
+Prescriptive rules derived from actual performance data, not opinions.
 """
 
 from __future__ import annotations

@@ -3,3 +3,11 @@ __pycache__/
 .venv/
 .agentloops/
 .pytest_cache/
+.env
+*.env
+.env.*
+
+# Internal business planning — never push to repo
+_internal/
+INVESTOR_MEMO.md
+TEST_TRACKING.md

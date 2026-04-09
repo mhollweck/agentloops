@@ -397,60 +397,77 @@ for point in curve:
 
 ## 6. Quality Gates
 
-**What it does:** Uses active rules as pre-flight checks before agent output is delivered. If the output violates known rules, you can flag it for review or regeneration.
+**What it does:** Pre-flight validation of agent output before it reaches users. Catches violations of learned rules, hallucination markers, and custom quality criteria.
 
 **How it works:**
 
-Quality gates are not a separate component -- they're a pattern built on top of `enhance_prompt()` and `rules.active()`. The idea: before your agent's output reaches the user, check it against what the system has learned.
+Quality gates are a first-class component via `loops.check()`. Three layers of checks run in sequence:
 
 ```
-  Agent Output
+  Agent Output + Original Input
        │
        ▼
-  ┌──────────────────────┐
-  │  Quality Gate Check  │
-  │                      │
-  │  For each active rule:│
-  │  Does the output     │
-  │  violate this rule?  │
-  └──────────┬───────────┘
-             │
-        ┌────┴────┐
-        │         │
-     PASS      FAIL
-        │         │
-        ▼         ▼
-    Deliver    Regenerate
-    output     or flag for
-               human review
+  ┌──────────────────────────────────────────┐
+  │            Quality Gate                   │
+  │                                          │
+  │  Layer 1: Built-in checks                │
+  │  - Empty output?                         │
+  │  - Min/max length?                       │
+  │  - Hallucination markers?                │
+  │    ("I don't have access to", etc.)      │
+  │                                          │
+  │  Layer 2: Rule-based checks              │
+  │  - For each active "avoid" rule:         │
+  │    Does the output violate it?           │
+  │                                          │
+  │  Layer 3: Custom checks                  │
+  │  - Your own validation functions         │
+  └──────────────────┬───────────────────────┘
+                     │
+                ┌────┴────┐
+                │         │
+             PASS      FAIL
+             (score    (score
+             >= 0.7)   < 0.7)
+                │         │
+                ▼         ▼
+            Deliver    Regenerate
+            output     or flag for
+                       human review
 ```
 
-Implementation pattern:
+The gate computes a score (ratio of passed checks to total checks) and compares it against a configurable threshold.
 
 ```python
-# Get active rules
-rules = loops.rules.active()
+# Basic quality check
+result = loops.check(output=agent_response, input=user_query)
 
-# Build a quality check prompt
-check_prompt = f"""Check this agent output against these rules:
+if result.passed:
+    deliver(agent_response)
+else:
+    print(result.score)       # 0.4
+    print(result.failures)    # ["Violates rule: IF pricing THEN include disclaimer"]
+    print(result.warnings)    # ["Output shorter than recommended minimum"]
 
-Rules:
-{chr(10).join(f'- {r.text}' for r in rules)}
+# With custom checks
+def check_no_competitor_mentions(output, input):
+    competitors = ["CompetitorA", "CompetitorB"]
+    found = [c for c in competitors if c.lower() in output.lower()]
+    return {
+        "passed": len(found) == 0,
+        "name": "no_competitor_mentions",
+        "message": f"Mentions competitors: {found}" if found else "",
+    }
 
-Output to check:
-{agent_output}
-
-Does the output violate any rules? Return JSON:
-{{"passes": true/false, "violations": ["rule text that was violated"]}}
-"""
-
-# Send to LLM for evaluation
-result = check_with_llm(check_prompt)
-
-if not result["passes"]:
-    # Regenerate with violations flagged, or route to human
-    regenerate_with_feedback(result["violations"])
+result = loops.check(
+    output=agent_response,
+    input=user_query,
+    custom_checks=[check_no_competitor_mentions],
+    pass_threshold=0.8,
+)
 ```
+
+Quality gates work hand-in-hand with the learning loop: as the agent learns new rules, the gate automatically checks against them. No manual rule-list maintenance required.
 
 ---
 
@@ -542,6 +559,41 @@ if len(curve) >= 2:
 │                                          "pruned"               │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+## Outcome Configuration
+
+By default, AgentLoops treats outcomes as binary (success/failure). But many agents have richer success criteria. The outcome configuration system lets you define exactly what "good" means.
+
+### Outcome Types
+
+| Type | Example | How it's scored |
+|------|---------|----------------|
+| **Binary** | `"success"` / `"failure"` | 1.0 or 0.0 |
+| **Categorical** | `"booked"`, `"replied"`, `"ignored"` | 1.0 for success values, 0.0 otherwise |
+| **Numeric** | `0.85`, `4.2` | Compared against goal direction (minimize/maximize) |
+| **Duration** | `320` (ms) | Compared against target value |
+| **Multi-metric** | `{"booking_rate": "booked", "latency": 320}` | Weighted composite of individual metric scores |
+
+### Multi-Metric Learning
+
+When you define multiple metrics, the reflection engine understands all of them. Instead of just "this run succeeded," it knows *how* it succeeded:
+
+```
+Run 1: booking_rate=booked (weight 3.0), latency=800ms (weight 1.0) → composite: 0.65
+Run 2: booking_rate=ignored (weight 3.0), latency=200ms (weight 1.0) → composite: 0.25
+Run 3: booking_rate=booked (weight 3.0), latency=300ms (weight 1.0) → composite: 0.93
+```
+
+The reflection engine sees that Run 3 outperformed Run 1 despite both booking -- because latency was better. This produces more nuanced rules like:
+
+```
+IF booking confirmation THEN respond within 500ms -- because fast responses
+after booking had 40% higher composite scores
+```
+
+The `describe()` method generates a human-readable explanation of the outcome config, which is injected into reflection prompts so the LLM understands what to optimize for.
+
+---
 
 ## Storage
 

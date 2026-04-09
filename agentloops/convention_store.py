@@ -1,7 +1,7 @@
 """Convention store — manages evolving behavioral rules with contradiction detection.
 
-Inspired by the conventions.md pattern in maria-os: self-learned patterns that
-all agents read at startup. Conventions evolve as rules are validated or invalidated.
+Self-learned patterns that agents read at startup. Conventions evolve as
+rules are validated or invalidated over time.
 """
 
 from __future__ import annotations

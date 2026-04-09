@@ -494,7 +494,78 @@ agentloops/__init__.py
 ```
 
 **External dependencies:**
-- `anthropic` -- used by Reflector, RuleEngine, and ConventionStore for LLM calls
+- `anthropic` -- used by Reflector, RuleEngine, and ConventionStore for LLM calls (default provider)
+- `openai` (optional) -- alternative LLM provider, install with `pip install agentloops[openai]`
 - Standard library only for everything else (json, pathlib, uuid, datetime, dataclasses, abc)
 
-The `anthropic` import is deferred (inside methods, not at module level) so you can use AgentLoops for tracking and prompt enhancement without having the Anthropic SDK installed, as long as you don't call `reflect()`, `generate_rules()`, or `evolve()`.
+The LLM imports are deferred (inside methods, not at module level) so you can use AgentLoops for tracking and prompt enhancement without having any LLM SDK installed, as long as you don't call `reflect()`, `generate_rules()`, or `evolve()`.
+
+### Multi-LLM Support
+
+AgentLoops supports three LLM providers for reflection, rule generation, and convention evolution:
+
+| Provider | `llm_provider` | API Key | Notes |
+|----------|----------------|---------|-------|
+| Anthropic | `"anthropic"` (default) | `ANTHROPIC_API_KEY` env var or `api_key` param | Uses Claude models |
+| OpenAI | `"openai"` | `OPENAI_API_KEY` env var or `api_key` param | Uses GPT models |
+| Custom | `"custom"` | Not needed | Pass `llm_fn` -- any callable that takes a prompt string and returns a response string |
+
+The custom provider enables local models (Ollama), Groq, Mistral, or any other LLM endpoint. The `llm_fn` callable is passed the same structured prompts that would go to Anthropic/OpenAI, and must return the response text.
+
+---
+
+## Server Architecture (FastAPI)
+
+AgentLoops includes a FastAPI server (`server/app.py`) for hosted deployments:
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                    FastAPI Server                          │
+│                   (server/app.py)                          │
+│                                                          │
+│  15 REST endpoints:                                       │
+│  - POST /track          - GET  /runs                     │
+│  - POST /reflect        - GET  /rules                    │
+│  - POST /evolve         - GET  /conventions              │
+│  - POST /forget         - GET  /reflections              │
+│  - POST /check          - GET  /improvement-curve        │
+│  - POST /enhance-prompt - GET  /correlate/{rule_id}      │
+│  - POST /agents         - GET  /agents                   │
+│  - GET  /health                                          │
+│                                                          │
+│  Authentication:                                          │
+│  - JWT tokens (user sessions)                            │
+│  - API keys (server-to-server, al_xxx format)            │
+│  Both managed in server/auth.py                          │
+│                                                          │
+│  Storage: Supabase (with Row Level Security)             │
+└──────────────────────┬───────────────────────────────────┘
+                       │
+                       ▼
+              ┌─────────────────┐
+              │    Supabase     │
+              │  (PostgreSQL +  │
+              │   RLS + Auth)   │
+              └─────────────────┘
+```
+
+**Note:** The `al_xxx` API key format is used for authenticating with the hosted API server (server/auth.py). When using the library directly, the `api_key` parameter is the LLM provider's API key (Anthropic or OpenAI).
+
+## Dashboard Architecture (Next.js)
+
+The dashboard (`dashboard/`) provides a visual interface for monitoring agent learning, following the maria-os design system (white background, black borders, no colored backgrounds).
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                  Next.js Dashboard                         │
+│                  (dashboard/)                              │
+│                                                          │
+│  Pages:                                                   │
+│  - Overview      — agent list, health status             │
+│  - Agent Detail  — runs, rules, conventions, reflections │
+│  - Learning      — improvement curves, rule correlation  │
+│  - Quality       — gate results, failure analysis        │
+│                                                          │
+│  Data source: FastAPI server OR direct Supabase queries  │
+└──────────────────────────────────────────────────────────┘
+```

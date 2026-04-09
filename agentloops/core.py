@@ -14,15 +14,20 @@ Usage:
 
 from __future__ import annotations
 
+import os
 import statistics
 from pathlib import Path
 from typing import Any
 
+from agentloops.collective import CollectiveClient, is_opted_out
 from agentloops.convention_store import ConventionStore
 from agentloops.forgetter import Forgetter
+from agentloops.llm import LLMCallable, create_llm_client
 from agentloops.models import Reflection, Run
+from agentloops.quality_gate import GateResult, QualityGate
 from agentloops.reflector import Reflector
 from agentloops.rule_engine import RuleEngine
+from agentloops.seed_rules import get_seed_rules
 from agentloops.storage.base import BaseStorage
 from agentloops.storage.file import FileStorage
 from agentloops.tracker import Tracker
@@ -47,20 +52,34 @@ class AgentLoops:
         agent_type: str | None = None,
         reflection_threshold: int = 10,
         evolution_interval: int = 50,
+        supabase_url: str | None = None,
+        supabase_key: str | None = None,
+        user_id: str | None = None,
+        llm_provider: str = "anthropic",
+        llm_fn: LLMCallable | None = None,
     ) -> None:
         """Initialize AgentLoops.
 
         Args:
             agent_name: Unique name for this agent.
-            storage: Either "file" for file-based storage or a BaseStorage instance.
+            storage: "file" for local JSON, "supabase" for cloud, or a BaseStorage instance.
             storage_path: Directory for file storage. Defaults to ".agentloops".
-            reflection_model: Anthropic model to use for reflection/rule generation.
-            api_key: Anthropic API key. Uses ANTHROPIC_API_KEY env var if not set.
+            reflection_model: Model name for reflection/rule generation.
+            api_key: LLM API key. Falls back to ANTHROPIC_API_KEY or OPENAI_API_KEY env vars.
             auto_learn: If True, automatically trigger reflection and evolution.
-            agent_type: Optional agent type for future pre-seeded global rules.
+            agent_type: Optional agent type for pre-seeded starter rules.
             reflection_threshold: Number of new runs before auto-reflection triggers.
             evolution_interval: Number of runs between auto-evolution triggers.
+            supabase_url: Supabase project URL (for storage="supabase").
+            supabase_key: Supabase API key (for storage="supabase").
+            user_id: User ID for multi-tenant scoping (for storage="supabase").
+            llm_provider: LLM provider: "anthropic" (default), "openai", or "custom".
+            llm_fn: Custom LLM function(prompt) -> str. Required when llm_provider="custom".
         """
+        # Resolve supabase config from env vars if not provided
+        supabase_url = supabase_url or os.environ.get("AGENTLOOPS_SUPABASE_URL")
+        supabase_key = supabase_key or os.environ.get("AGENTLOOPS_SUPABASE_KEY")
+
         self._agent_name = agent_name
         self.auto_learn = auto_learn
         self.agent_type = agent_type
@@ -74,10 +93,30 @@ class AgentLoops:
             if storage == "file":
                 path = Path(storage_path) if storage_path else Path(".agentloops")
                 self._storage = FileStorage(path, agent_name)
+            elif storage == "supabase":
+                from agentloops.storage.supabase import SupabaseStorage
+                if not supabase_url or not supabase_key:
+                    raise ValueError(
+                        "Supabase storage requires supabase_url and supabase_key. "
+                        "Pass them directly or set AGENTLOOPS_SUPABASE_URL and "
+                        "AGENTLOOPS_SUPABASE_KEY environment variables."
+                    )
+                self._storage = SupabaseStorage(
+                    url=supabase_url, key=supabase_key,
+                    agent_name=agent_name, user_id=user_id,
+                )
             else:
-                raise ValueError(f"Unknown storage type: {storage}. Use 'file' or pass a BaseStorage instance.")
+                raise ValueError(f"Unknown storage type: {storage}. Use 'file', 'supabase', or pass a BaseStorage instance.")
         else:
             self._storage = storage
+
+        # Create shared LLM client (supports Anthropic, OpenAI, or custom)
+        if llm_fn:
+            _llm_client = create_llm_client(provider="custom", custom_fn=llm_fn)
+        else:
+            _llm_client = create_llm_client(
+                provider=llm_provider, model=reflection_model, api_key=api_key
+            )
 
         # Initialize components
         self._tracker = Tracker(self._storage, agent_name)
@@ -85,6 +124,31 @@ class AgentLoops:
         self._rule_engine = RuleEngine(self._storage, agent_name, reflection_model, api_key)
         self._convention_store = ConventionStore(self._storage, agent_name, reflection_model, api_key)
         self._forgetter = Forgetter(self._storage)
+        self._quality_gate = QualityGate(self._storage, agent_name)
+
+        # Inject the shared LLM client into components that use it
+        self._reflector._call_llm = _llm_client
+        self._rule_engine._call_llm = _llm_client
+        self._convention_store._call_llm = _llm_client
+
+        # Initialize collective intelligence client
+        self._collective = CollectiveClient(
+            agent_type=agent_type,
+            api_key=api_key if api_key and api_key.startswith("al_") else None,
+            enabled=not is_opted_out(),
+        )
+
+        # Load seed rules for the agent type (only if no rules exist yet)
+        if agent_type and not self._storage.get_rules(active_only=True):
+            # First try live global rules (Pro/Enterprise)
+            global_rules = self._collective.pull_global_rules()
+            if global_rules:
+                for rule in global_rules:
+                    self._storage.save_rule(rule)
+            else:
+                # Fall back to static seed rules (Free tier)
+                for rule in get_seed_rules(agent_type):
+                    self._storage.save_rule(rule)
 
     def track(
         self,
@@ -195,7 +259,8 @@ class AgentLoops:
         """Trigger reflection on recent runs.
 
         Analyzes the last N runs, produces a structured critique, and suggests
-        new IF/THEN rules based on patterns found.
+        new IF/THEN rules based on patterns found. After reflection,
+        contributes anonymized rules to the collective intelligence network.
 
         Args:
             last_n: Number of recent runs to analyze.
@@ -203,7 +268,13 @@ class AgentLoops:
         Returns:
             A Reflection with critique, suggested rules, and confidence scores.
         """
-        return self._reflector.reflect(last_n=last_n)
+        reflection = self._reflector.reflect(last_n=last_n)
+
+        # Contribute validated rules to the collective network (non-blocking)
+        active_rules = self._rule_engine.active()
+        self._collective.contribute_rules(active_rules)
+
+        return reflection
 
     def enhance_prompt(self, base_prompt: str) -> str:
         """Inject active rules and conventions into an agent prompt.
@@ -255,6 +326,32 @@ class AgentLoops:
             Dict with lists of pruned rule and convention IDs.
         """
         return self._forgetter.prune(strategy=strategy, max_age_days=max_age_days)
+
+    def check(
+        self,
+        output: str,
+        input: str = "",
+        metadata: dict[str, Any] | None = None,
+    ) -> GateResult:
+        """Run quality gate checks on an output before using it.
+
+        Validates the output against built-in checks and learned rules.
+        Use this before sending agent output to users.
+
+        Args:
+            output: The agent's output to validate.
+            input: The original input for context.
+            metadata: Optional metadata for custom checks.
+
+        Returns:
+            GateResult with pass/fail, score, and details.
+        """
+        return self._quality_gate.check(output=output, input=input, metadata=metadata)
+
+    @property
+    def quality_gate(self) -> QualityGate:
+        """Access the quality gate directly."""
+        return self._quality_gate
 
     @property
     def rules(self) -> RuleEngine:

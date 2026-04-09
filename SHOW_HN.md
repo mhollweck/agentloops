@@ -13,7 +13,7 @@ I've been running 7 AI agents in production for months (content creation, analyt
 So I built AgentLoops -- a Python library that adds self-learning to any AI agent. Add 2 lines of code. Your agent learns automatically.
 
 ```python
-loops = AgentLoops("sales-outreach", agent_type="sales-sdr", api_key="al_xxx")
+loops = AgentLoops("sales-outreach", agent_type="sales-sdr")
 loops.track(input=task, output=result, outcome="meeting_booked")
 ```
 
@@ -23,4 +23,6 @@ Under the hood it implements 7 learning mechanisms: self-reflection, spike detec
 
 The key insight: there's a clear gap in the agent stack. Frameworks (LangChain, CrewAI) handle orchestration. Observability tools (LangSmith, Arize) handle monitoring. Memory systems (Mem0, Letta -- $140M+ in funding between them) handle storage. Evaluation tools (Braintrust, RAGAS) handle testing. But nothing sits between memory and evaluation to actually close the learning loop. AgentLoops fills that gap.
 
-This is MIT licensed and I'd love feedback -- especially from people running agents in production who've felt the same pain. What learning mechanisms are you building manually today? What's missing from this approach?
+**The bigger idea: Collective Intelligence.** When you pass `agent_type="sales-sdr"`, your agent starts with proven IF/THEN rules from the domain. But we're building something nobody else has -- a global intelligence network where every agent of the same type makes ALL agents of that type smarter. Your sales agent's learnings (anonymized) improve every other sales agent on the platform. A new customer's agent on day 1 inherits thousands of validated rules. This is the Waze model applied to AI agents.
+
+Works with any LLM (Anthropic, OpenAI, or bring your own). MIT licensed. Would love feedback -- especially from people running agents in production who've felt the same pain. What learning mechanisms are you building manually today? What would collective agent intelligence mean for your use case?

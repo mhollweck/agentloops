@@ -43,7 +43,8 @@ pip install agentloops
 ```python
 from agentloops import AgentLoops
 
-loops = AgentLoops("sales-outreach", agent_type="sales-sdr", api_key="al_xxx")
+# Uses ANTHROPIC_API_KEY env var for reflection
+loops = AgentLoops("sales-outreach", agent_type="sales-sdr")
 
 # Track every agent run — learning happens automatically
 loops.track(input=task, output=result, outcome="meeting_booked")
@@ -54,7 +55,46 @@ enhanced_prompt = loops.enhance_prompt(base_prompt)
 
 That's it. Two methods. Your agent now learns from every run.
 
+When you pass `agent_type="sales-sdr"`, AgentLoops loads pre-seeded IF/THEN rules for that agent type -- so your agent starts smart on day one instead of learning from scratch. 10 agent types available out of the box (sales, support, content, code, recruiting, legal, and more).
+
 Learning triggers automatically after enough outcomes. You can also call `reflect()`, `evolve()`, and `forget()` manually for fine-grained control.
+
+### Multi-LLM Support
+
+AgentLoops works with Anthropic (default), OpenAI, or any custom LLM:
+
+```python
+# OpenAI
+loops = AgentLoops("my-agent", llm_provider="openai", api_key="sk-...")
+
+# Custom LLM (local Ollama, Groq, Mistral, etc.)
+loops = AgentLoops("my-agent", llm_provider="custom", llm_fn=my_llm_callable)
+```
+
+## Collective Intelligence — Your Agent Starts Smart
+
+> **Shipping now:** Pre-seeded starter rules for 10 agent types. **Coming soon:** Live cross-customer intelligence network.
+
+Every agent on AgentLoops learns from its own runs. The vision: aggregate anonymized learnings across ALL agents of the same type into a **global intelligence pool**. Today, your agent starts with curated starter rules for its type. Soon, it'll inherit live proven rules from every agent on the platform.
+
+```
+More customers → More outcome data → Better global rules
+  → New customers start smarter → Better results → More customers
+```
+
+This is the Waze model. The free map is great. The live traffic data is what makes it indispensable.
+
+**What's available now:** 10 agent types with curated starter rules (`sales-sdr`, `customer-support`, `content-creator`, and 7 more). Your agent starts smart on day 1 instead of learning from scratch.
+
+**What's coming (the network):** Every user contributes anonymized learnings. You pay for freshness and depth:
+
+| Tier | Contributes? | Intelligence |
+|------|-------------|-------------|
+| **Free** | Yes (anonymized) | Curated starter rules bundled with the package |
+| **Pro** | Yes | Live global rules updated from the network |
+| **Enterprise** | Yes | Live rules + benchmarking + custom filters |
+
+No other tool does this. Mem0 stores facts. Letta learns inside their platform. **AgentLoops learns across the entire ecosystem.**
 
 ## Before vs After
 
@@ -86,13 +126,57 @@ AgentLoops implements seven learning mechanisms, inspired by [Reflexion](https:/
 |---|-----------|-------------|--------------|
 | 1 | **Self-Reflection** | Agent evaluates its own output, writes patterns to conventions | After every run |
 | 2 | **Spike Detection** | Detects performance anomalies, triggers follow-up | Continuous |
-| 3 | **Quality Gate** | Scores outputs on configurable criteria before approval | Before output |
+| 3 | **Quality Gate** | Pre-flight validation via `loops.check()` — built-in + rule-based + custom checks | Before output |
 | 4 | **Decision Rules** | Extracts IF/THEN rules from performance data | Weekly |
 | 5 | **Cross-Evaluation** | Compares predictions vs actual outcomes | Weekly |
 | 6 | **Contradiction Resolution** | Detects and resolves conflicting learned rules | Weekly |
 | 7 | **Selective Forgetting** | Prunes stale patterns that no longer apply | Daily |
 
 These aren't theoretical. They've been running in production across 7 agents processing real data for months.
+
+## Multi-Outcome System
+
+Not every agent has a simple pass/fail outcome. AgentLoops supports rich outcome definitions so learning works for any metric:
+
+```python
+from agentloops import AgentLoops, OutcomeConfig, MetricDef
+
+# Binary (default) — success or failure
+loops = AgentLoops("my-agent", outcome=OutcomeConfig.binary())
+
+# Categorical — multiple outcome values
+loops = AgentLoops("my-agent", outcome=OutcomeConfig.categorical(["booked", "replied", "ignored"]))
+
+# Numeric — scored outcomes with a goal direction
+loops = AgentLoops("my-agent", outcome=OutcomeConfig.numeric(goal="minimize"))
+
+# Multi-metric — weighted composite scoring
+loops = AgentLoops("my-agent", outcome=OutcomeConfig(metrics=[
+    MetricDef("booking_rate", "categorical", weight=3.0, success_values=["booked"]),
+    MetricDef("latency", "duration", weight=1.0, target_value=500),
+]))
+
+# Score a run with multiple metrics
+score = loops.outcome.score({"booking_rate": "booked", "latency": 320})
+```
+
+The outcome config tells the reflection and rule engines what "good" looks like, so they generate rules that actually optimize for your goals.
+
+## Quality Gates
+
+Validate agent output before it reaches users:
+
+```python
+result = loops.check(output=agent_response, input=user_query)
+
+if result.passed:
+    deliver(agent_response)
+else:
+    print(result.failures)  # ["Output contains hallucination markers", "Violates rule: IF pricing question THEN include disclaimer"]
+    regenerate()
+```
+
+Built-in checks catch empty outputs, hallucination markers, and length violations. Rule-based checks validate output against learned "avoid" rules. You can also pass custom check functions. See the [API Reference](https://agent-loops.com/docs/api) for full configuration.
 
 ## How It Works
 
@@ -157,12 +241,19 @@ AgentLoops is not a replacement for memory systems. It's the layer that sits on 
 Works with any agent framework. Or no framework at all.
 
 ```python
-# With LangChain
-result = chain.invoke(loops.enhance_prompt(prompt))
-loops.track(input=prompt, output=result, outcome=outcome)
+# With LangChain — drop-in callback handler
+from agentloops.adapters.langchain import AgentLoopsCallback
 
-# With CrewAI
-agent = Agent(role="researcher", goal=loops.enhance_prompt(base_goal))
+handler = AgentLoopsCallback(loops, outcome_fn=lambda run: "success" if run.success else "failure")
+result = chain.invoke(prompt, config={"callbacks": [handler]})
+# Automatically tracks chain runs, errors, and outcomes
+
+# With CrewAI — callback for tasks and crews
+from agentloops.adapters.crewai import AgentLoopsCrewCallback
+
+callback = AgentLoopsCrewCallback(loops, outcome_fn=lambda task: task.output.quality_score)
+crew = Crew(agents=[agent], tasks=[task], callbacks=[callback])
+# Automatically tracks task completions and crew results
 
 # With raw OpenAI/Anthropic calls
 response = client.chat.completions.create(

@@ -24,8 +24,11 @@ from agentloops.convention_store import ConventionStore
 from agentloops.core import AgentLoops
 from agentloops.forgetter import Forgetter
 from agentloops.models import Convention, Reflection, Rule, Run
+from agentloops.outcomes import MetricDef, OutcomeConfig
+from agentloops.quality_gate import GateResult, QualityGate
 from agentloops.reflector import Reflector
 from agentloops.rule_engine import RuleEngine
+from agentloops.seed_rules import get_seed_rules, list_agent_types
 from agentloops.tracker import Tracker
 
 __version__ = "0.1.0"
@@ -35,10 +38,16 @@ __all__ = [
     "Convention",
     "ConventionStore",
     "Forgetter",
+    "GateResult",
+    "MetricDef",
+    "OutcomeConfig",
+    "QualityGate",
     "Reflection",
     "Reflector",
     "Rule",
     "RuleEngine",
     "Run",
     "Tracker",
+    "get_seed_rules",
+    "list_agent_types",
 ]

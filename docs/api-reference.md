@@ -19,26 +19,38 @@ AgentLoops(
     agent_name: str,
     agent_type: str | None = None,
     api_key: str | None = None,
+    llm_provider: str = "anthropic",
+    llm_fn: Callable[[str], str] | None = None,
     storage: str | BaseStorage = "file",
     storage_path: str | Path | None = None,
     reflection_model: str = "claude-sonnet-4-6",
     auto_learn: bool = True,
     reflection_threshold: int = 10,
     evolution_interval: int = 50,
+    outcome: OutcomeConfig | None = None,
+    supabase_url: str | None = None,
+    supabase_key: str | None = None,
+    user_id: str | None = None,
 )
 ```
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `agent_name` | `str` | required | Unique name for this agent. Used as the storage namespace. |
-| `agent_type` | `str \| None` | `None` | Agent type for pre-seeded rules and cross-customer intelligence. Examples: `"sales-sdr"`, `"support-agent"`, `"content-writer"`. When set, the agent starts with domain-specific rules instead of learning from scratch. |
-| `api_key` | `str \| None` | `None` | AgentLoops API key (format: `al_xxx`). Enables cloud storage, auto-learn, dashboard access, and cross-customer intelligence. Without an API key, data is stored locally and learning must be triggered manually. Also falls back to `AGENTLOOPS_API_KEY` env var. For the Anthropic reflection model, set `ANTHROPIC_API_KEY` separately. |
-| `storage` | `str \| BaseStorage` | `"file"` | Storage backend. `"file"` for JSON file storage, or pass a `BaseStorage` instance. When `api_key` is set, defaults to cloud storage. |
+| `agent_type` | `str \| None` | `None` | Agent type for pre-seeded rules and cross-customer intelligence. Examples: `"sales-sdr"`, `"support-agent"`, `"content-writer"`. When set, the agent starts with domain-specific rules instead of learning from scratch. See [Seed Rules](#seed-rules) for all available types. |
+| `api_key` | `str \| None` | `None` | LLM provider API key. For Anthropic: your `ANTHROPIC_API_KEY` (sk-ant-...). For OpenAI: your `OPENAI_API_KEY` (sk-...). Falls back to the corresponding environment variable (`ANTHROPIC_API_KEY` or `OPENAI_API_KEY`) when not provided. Not needed when using `llm_provider="custom"` with `llm_fn`. |
+| `llm_provider` | `str` | `"anthropic"` | Which LLM provider to use for reflection and rule generation. `"anthropic"` (default), `"openai"`, or `"custom"` (requires `llm_fn`). |
+| `llm_fn` | `Callable[[str], str] \| None` | `None` | Custom LLM callable for `llm_provider="custom"`. Takes a prompt string and returns a response string. Use this for local models (Ollama), Groq, Mistral, or any other provider. |
+| `storage` | `str \| BaseStorage` | `"file"` | Storage backend. `"file"` for JSON file storage, `"supabase"` for Supabase cloud storage, or pass a `BaseStorage` instance. |
 | `storage_path` | `str \| Path \| None` | `".agentloops"` | Directory for file storage. |
 | `reflection_model` | `str` | `"claude-sonnet-4-6"` | Anthropic model for reflection and rule generation. |
 | `auto_learn` | `bool` | `True` | When `True` and `api_key` is set, automatically triggers `reflect()`, `evolve()`, and `forget()` based on the configured thresholds. When `False` or no `api_key`, you must call these methods manually. |
 | `reflection_threshold` | `int` | `10` | Number of tracked runs before auto-reflection triggers. Only applies when `auto_learn=True`. After each reflection, the counter resets. Lower values mean faster learning but more LLM calls. |
 | `evolution_interval` | `int` | `50` | Number of tracked runs between automatic convention evolution cycles. Only applies when `auto_learn=True`. Evolution promotes high-confidence rules to conventions, resolves contradictions, and merges overlapping patterns. |
+| `outcome` | `OutcomeConfig \| None` | `None` | Outcome configuration defining what "good" means for this agent. Supports binary, categorical, numeric, duration, and multi-metric outcomes. When `None`, defaults to binary (success/failure). |
+| `supabase_url` | `str \| None` | `None` | Supabase project URL. Required when `storage="supabase"`. Falls back to `AGENTLOOPS_SUPABASE_URL` env var. |
+| `supabase_key` | `str \| None` | `None` | Supabase API key. Required when `storage="supabase"`. Falls back to `AGENTLOOPS_SUPABASE_KEY` env var. |
+| `user_id` | `str \| None` | `None` | User ID for multi-tenant Supabase storage. Enables Row Level Security (RLS) so each user's data is isolated. |
 
 ### Methods
 
@@ -133,6 +145,30 @@ forget(
 
 ---
 
+#### `check()`
+
+Pre-flight validation of agent output against learned rules and built-in checks.
+
+```python
+check(
+    output: str,
+    input: str | None = None,
+    custom_checks: list[Callable] | None = None,
+    pass_threshold: float = 0.7,
+) -> GateResult
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `output` | `str` | required | The agent output to validate. |
+| `input` | `str \| None` | `None` | The original input (used for context in rule-based checks). |
+| `custom_checks` | `list[Callable] \| None` | `None` | Custom check functions. Each takes `(output, input)` and returns a dict with `passed`, `name`, and optional `message`. |
+| `pass_threshold` | `float` | `0.7` | Minimum score to pass. Score is computed as the ratio of passed checks to total checks. |
+
+**Returns:** `GateResult` -- result object with `passed`, `score`, `failures`, and `warnings`.
+
+---
+
 ### Properties
 
 | Property | Type | Description |
@@ -140,6 +176,8 @@ forget(
 | `rules` | `RuleEngine` | Direct access to the rule engine. |
 | `conventions` | `ConventionStore` | Direct access to the convention store. |
 | `tracker` | `Tracker` | Direct access to the tracker. |
+| `quality_gate` | `QualityGate` | Direct access to the quality gate instance. |
+| `outcome` | `OutcomeConfig` | The outcome configuration for this agent. |
 | `agent_name` | `str` | The name of the agent this instance manages. |
 
 ---
@@ -627,3 +665,271 @@ from agentloops import Reflection
 | `created_at` | `str` | auto-generated | ISO 8601 timestamp. |
 
 Methods: `to_dict() -> dict`, `from_dict(d: dict) -> Reflection`
+
+---
+
+## OutcomeConfig
+
+Defines what "good" means for an agent. Used by the reflection and rule engines to optimize for the right goals.
+
+```python
+from agentloops import OutcomeConfig
+```
+
+### Factory Methods
+
+```python
+# Binary — success or failure
+OutcomeConfig.binary()
+
+# Categorical — multiple possible outcome values
+OutcomeConfig.categorical(["booked", "replied", "ignored"])
+
+# Numeric — scored outcomes with a goal direction
+OutcomeConfig.numeric(goal="minimize")  # or goal="maximize"
+```
+
+### Constructor (Multi-Metric)
+
+```python
+OutcomeConfig(
+    metrics: list[MetricDef],
+)
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `metrics` | `list[MetricDef]` | List of metric definitions with weights. |
+
+### Methods
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `score` | `(values: dict[str, Any]) -> float` | Compute a weighted composite score from metric values. |
+| `describe` | `() -> str` | Generate a human-readable description of what "good" means. |
+
+---
+
+## MetricDef
+
+Defines an individual metric within a multi-metric outcome configuration.
+
+```python
+from agentloops import MetricDef
+```
+
+```python
+MetricDef(
+    name: str,
+    type: str,
+    weight: float = 1.0,
+    success_values: list[str] | None = None,
+    target_value: float | None = None,
+    goal: str | None = None,
+)
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `name` | `str` | required | Metric name (e.g., `"booking_rate"`, `"latency"`). |
+| `type` | `str` | required | One of `"binary"`, `"categorical"`, `"numeric"`, `"duration"`. |
+| `weight` | `float` | `1.0` | Weight in composite scoring. Higher = more important. |
+| `success_values` | `list[str] \| None` | `None` | For categorical metrics: which values count as success. |
+| `target_value` | `float \| None` | `None` | For numeric/duration metrics: the target to optimize toward. |
+| `goal` | `str \| None` | `None` | For numeric metrics: `"minimize"` or `"maximize"`. |
+
+---
+
+## QualityGate
+
+Pre-flight validation engine. Runs built-in checks, rule-based checks, and custom checks against agent output.
+
+```python
+from agentloops.quality_gate import QualityGate
+```
+
+### Constructor
+
+```python
+QualityGate(
+    rules: RuleEngine,
+    pass_threshold: float = 0.7,
+)
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `rules` | `RuleEngine` | required | Rule engine for rule-based validation. |
+| `pass_threshold` | `float` | `0.7` | Minimum score to pass validation. |
+
+### Methods
+
+#### `check()`
+
+```python
+check(
+    output: str,
+    input: str | None = None,
+    custom_checks: list[Callable] | None = None,
+) -> GateResult
+```
+
+Runs all checks and returns a `GateResult`.
+
+**Built-in checks:**
+- Empty output detection
+- Minimum/maximum length validation
+- Hallucination marker detection (e.g., "I don't have access to", "As an AI")
+
+**Rule-based checks:**
+- Validates output against learned "avoid" rules from the rule engine
+
+**Custom checks:**
+- Each function takes `(output, input)` and returns `{"passed": bool, "name": str, "message": str}`
+
+---
+
+## GateResult
+
+Result of a quality gate check.
+
+```python
+from agentloops.quality_gate import GateResult
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `passed` | `bool` | Whether the output passed all checks above the threshold. |
+| `score` | `float` | Ratio of passed checks to total checks (0.0-1.0). |
+| `failures` | `list[str]` | Descriptions of failed checks. |
+| `warnings` | `list[str]` | Non-blocking warnings. |
+
+---
+
+## Seed Rules
+
+Pre-seeded IF/THEN rules for common agent types. When you pass `agent_type` to the `AgentLoops` constructor, rules for that type are loaded automatically on first init.
+
+```python
+from agentloops import get_seed_rules, list_agent_types
+```
+
+### `list_agent_types()`
+
+Returns all available agent types.
+
+```python
+list_agent_types() -> list[str]
+```
+
+**Returns:** `["sales-sdr", "customer-support", "help-desk", "content-creator", "code-generator", "recruiting", "legal-review", "insurance-claims", "devops-incident", "ecommerce-rec"]`
+
+### `get_seed_rules()`
+
+Get the starter rules for a specific agent type.
+
+```python
+get_seed_rules(agent_type: str) -> list[Rule]
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `agent_type` | `str` | One of the supported agent types. |
+
+**Returns:** `list[Rule]` -- pre-configured IF/THEN rules with default confidence scores.
+
+**Raises:** `ValueError` if the agent type is not recognized.
+
+---
+
+## Framework Adapters
+
+### AgentLoopsCallback (LangChain)
+
+Drop-in LangChain callback handler that auto-tracks chain runs and errors.
+
+```python
+from agentloops.adapters.langchain import AgentLoopsCallback
+```
+
+```python
+AgentLoopsCallback(
+    loops: AgentLoops,
+    outcome_fn: Callable | None = None,
+)
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `loops` | `AgentLoops` | required | The AgentLoops instance to track to. |
+| `outcome_fn` | `Callable \| None` | `None` | Custom function to determine outcome from a chain run. Receives the run result, returns an outcome string. Defaults to `"success"` for completed runs, `"failure"` for errors. |
+
+**Usage:**
+
+```python
+handler = AgentLoopsCallback(loops, outcome_fn=lambda run: "success" if run.success else "failure")
+result = chain.invoke(prompt, config={"callbacks": [handler]})
+```
+
+---
+
+### AgentLoopsCrewCallback (CrewAI)
+
+CrewAI callback that tracks task and crew completions.
+
+```python
+from agentloops.adapters.crewai import AgentLoopsCrewCallback
+```
+
+```python
+AgentLoopsCrewCallback(
+    loops: AgentLoops,
+    outcome_fn: Callable | None = None,
+)
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `loops` | `AgentLoops` | required | The AgentLoops instance to track to. |
+| `outcome_fn` | `Callable \| None` | `None` | Custom function to determine outcome from a task result. Receives the task output, returns an outcome string. |
+
+**Usage:**
+
+```python
+callback = AgentLoopsCrewCallback(loops, outcome_fn=lambda task: task.output.quality_score)
+crew = Crew(agents=[agent], tasks=[task], callbacks=[callback])
+```
+
+---
+
+## SupabaseStorage
+
+Cloud storage backend using Supabase. Supports multi-tenant isolation via Row Level Security.
+
+```python
+from agentloops.storage import SupabaseStorage
+```
+
+### Constructor
+
+```python
+SupabaseStorage(
+    supabase_url: str,
+    supabase_key: str,
+    agent_name: str,
+    user_id: str | None = None,
+)
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `supabase_url` | `str` | required | Supabase project URL. |
+| `supabase_key` | `str` | required | Supabase API key (anon or service role). |
+| `agent_name` | `str` | required | Agent name for namespacing. |
+| `user_id` | `str \| None` | `None` | User ID for multi-tenant RLS. When set, all reads and writes are scoped to this user. |
+
+**Installation:** `pip install agentloops[supabase]`
+
+**Migration:** Apply `supabase/migrations/001_initial_schema.sql` to your Supabase project before first use.
+
+Implements the full `BaseStorage` interface.

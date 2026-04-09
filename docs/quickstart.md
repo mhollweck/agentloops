@@ -19,17 +19,17 @@ export ANTHROPIC_API_KEY=sk-ant-...
 ```python
 from agentloops import AgentLoops
 
-loops = AgentLoops("my-agent", agent_type="sales-sdr", api_key="al_xxx")
+loops = AgentLoops("my-agent", agent_type="sales-sdr")
 ```
 
-That's it. AgentLoops creates a `.agentloops/my-agent/` directory in your working folder to store runs, rules, conventions, and reflections as JSON files. With an `api_key`, data syncs to the cloud and learning triggers automatically.
+That's it. AgentLoops creates a `.agentloops/my-agent/` directory in your working folder to store runs, rules, conventions, and reflections as JSON files.
 
 ### Three Tiers
 
 | Tier | Usage | What you get |
 |------|-------|-------------|
 | **Free** | `AgentLoops("my-agent")` | Local storage, manual triggers for `reflect()`, `evolve()`, `forget()` |
-| **Pro** | `AgentLoops("my-agent", agent_type="sales-sdr", api_key="al_xxx")` | Cloud storage, auto-learn, dashboard, pre-seeded rules for your agent type |
+| **Pro** | `AgentLoops("my-agent", agent_type="sales-sdr", storage="supabase", supabase_url="...", supabase_key="...")` | Cloud storage, auto-learn, dashboard, pre-seeded rules for your agent type |
 | **Enterprise** | Same constructor + org config | Cross-customer intelligence, benchmarking, team management |
 
 **Free** is fully functional -- you call `reflect()`, `evolve()`, and `forget()` manually. **Pro** adds automatic learning triggers (reflection after N outcomes, spike detection, evolution on schedule) plus a dashboard to visualize your agent's improvement. **Enterprise** adds cross-customer intelligence (anonymized patterns from all agents of the same type) and team features.
@@ -40,15 +40,37 @@ That's it. AgentLoops creates a `.agentloops/my-agent/` directory in your workin
 loops = AgentLoops(
     agent_name="my-agent",
     agent_type="sales-sdr",             # Agent type for pre-seeded rules and cross-customer intelligence.
-    api_key="al_xxx",                   # AgentLoops API key. Enables cloud storage, auto-learn, dashboard.
+    api_key=None,                       # LLM provider API key. Falls back to ANTHROPIC_API_KEY or OPENAI_API_KEY env var.
+    llm_provider="anthropic",           # "anthropic" (default), "openai", or "custom" (requires llm_fn).
+    llm_fn=None,                        # Custom LLM callable for llm_provider="custom". Takes str, returns str.
     storage="file",                     # Default. Pass a BaseStorage instance for custom backends.
     storage_path=".agentloops",         # Where to store data. Defaults to ".agentloops".
     reflection_model="claude-sonnet-4-6",  # Model for reflection and rule generation.
-    auto_learn=True,                    # Auto-trigger reflect/evolve/forget. Requires api_key.
+    auto_learn=True,                    # Auto-trigger reflect/evolve/forget.
     reflection_threshold=10,            # Number of runs before auto-reflection triggers.
     evolution_interval=50,              # Number of runs between auto-evolution cycles.
 )
 ```
+
+## Bring Your Own LLM
+
+AgentLoops defaults to Anthropic for reflection and rule generation, but supports OpenAI and custom LLM providers too.
+
+```python
+# OpenAI
+loops = AgentLoops("my-agent", llm_provider="openai", api_key="sk-...")
+
+# Custom LLM (e.g., local Ollama, Groq, Mistral)
+import requests
+
+def my_llm(prompt: str) -> str:
+    response = requests.post("http://localhost:11434/api/generate", json={"model": "llama3", "prompt": prompt})
+    return response.json()["response"]
+
+loops = AgentLoops("my-agent", llm_provider="custom", llm_fn=my_llm)
+```
+
+When using `llm_provider="openai"`, set `OPENAI_API_KEY` as an environment variable or pass `api_key` directly. When using `llm_provider="custom"`, no API key is needed -- just provide your `llm_fn` callable.
 
 ## Track Your First Run
 
@@ -68,6 +90,44 @@ print(run.id)  # "a1b2c3d4e5f6"
 The `outcome` field is how AgentLoops knows what's working. Use:
 - `"success"` / `"failure"` for binary outcomes
 - A numeric string like `"0.85"` or `"4.2"` for scored outcomes
+
+### Configuring Outcomes
+
+For agents with complex success criteria, define an `OutcomeConfig`:
+
+```python
+from agentloops import AgentLoops, OutcomeConfig, MetricDef
+
+# Binary (the default if you don't specify)
+loops = AgentLoops("my-agent", outcome=OutcomeConfig.binary())
+
+# Categorical — multiple possible outcomes
+loops = AgentLoops("booking-agent", outcome=OutcomeConfig.categorical(["booked", "replied", "ignored"]))
+
+# Numeric — scored outcomes with a direction
+loops = AgentLoops("speed-agent", outcome=OutcomeConfig.numeric(goal="minimize"))
+
+# Multi-metric — weighted composite scoring
+loops = AgentLoops("sales-agent", outcome=OutcomeConfig(metrics=[
+    MetricDef("booking_rate", "categorical", weight=3.0, success_values=["booked"]),
+    MetricDef("latency", "duration", weight=1.0, target_value=500),
+]))
+
+# Track with multi-metric values
+loops.track(
+    input="...",
+    output="...",
+    outcome={"booking_rate": "booked", "latency": 320},
+)
+
+# Compute composite score programmatically
+score = loops.outcome.score({"booking_rate": "booked", "latency": 320})
+
+# Human-readable description of what "good" means
+print(loops.outcome.describe())
+```
+
+The outcome config tells the reflection engine what "good" looks like, so rules and conventions optimize for your actual goals -- not just binary pass/fail.
 
 ## Trigger Reflection
 
@@ -108,6 +168,24 @@ Rules are automatically persisted and can be queried later:
 active_rules = loops.rules.active()  # Returns rules sorted by confidence
 ```
 
+## Quality Gate
+
+Before delivering agent output, validate it against learned rules and built-in checks:
+
+```python
+result = loops.check(output=agent_response, input=user_query)
+
+if result.passed:
+    deliver(agent_response)
+else:
+    print(result.score)       # 0.4 (below pass threshold)
+    print(result.failures)    # ["Output is empty", "Violates rule: IF pricing THEN include disclaimer"]
+    print(result.warnings)    # ["Output is shorter than recommended minimum"]
+    regenerate()
+```
+
+The quality gate runs built-in checks (empty output, hallucination markers, length), rule-based checks (validates against learned "avoid" rules), and any custom check functions you provide. See the [API Reference](api-reference.md) for full configuration.
+
 ## Enhance a Prompt
 
 The real payoff: inject everything the system has learned directly into your agent's prompt:
@@ -139,8 +217,8 @@ Your agent now benefits from everything it has learned, without you manually rew
 ```python
 from agentloops import AgentLoops
 
-# Initialize
-loops = AgentLoops("sales-outreach", agent_type="sales-sdr", api_key="al_xxx")
+# Initialize (uses ANTHROPIC_API_KEY env var for reflection)
+loops = AgentLoops("sales-outreach", agent_type="sales-sdr")
 
 # Simulate a few agent runs
 loops.track(
@@ -176,6 +254,46 @@ changes = loops.conventions.evolve()
 # Prune stale patterns
 pruned = loops.forget(strategy="hybrid", max_age_days=21)
 ```
+
+## Supabase Cloud Storage
+
+For production deployments, use Supabase as the storage backend:
+
+```bash
+pip install agentloops[supabase]
+```
+
+```python
+loops = AgentLoops(
+    "my-agent",
+    storage="supabase",
+    supabase_url="https://your-project.supabase.co",
+    supabase_key="your-anon-key",
+    user_id="user-123",  # Optional: enables multi-tenant RLS
+)
+```
+
+You can also set `AGENTLOOPS_SUPABASE_URL` and `AGENTLOOPS_SUPABASE_KEY` as environment variables instead of passing them directly. The database migration is included at `supabase/migrations/001_initial_schema.sql` in the repo.
+
+## Framework Adapters
+
+Drop-in callbacks for popular frameworks:
+
+```python
+# LangChain
+from agentloops.adapters.langchain import AgentLoopsCallback
+
+handler = AgentLoopsCallback(loops, outcome_fn=lambda run: "success" if run.success else "failure")
+result = chain.invoke(prompt, config={"callbacks": [handler]})
+
+# CrewAI
+from agentloops.adapters.crewai import AgentLoopsCrewCallback
+
+callback = AgentLoopsCrewCallback(loops, outcome_fn=lambda task: task.output.quality_score)
+crew = Crew(agents=[agent], tasks=[task], callbacks=[callback])
+```
+
+Both adapters auto-track runs and errors. Pass a custom `outcome_fn` to define what "success" means for your agent.
 
 ## What Happens Under the Hood
 

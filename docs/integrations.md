@@ -72,13 +72,15 @@ def nightly_learning():
 
 ## Raw OpenAI SDK
 
+AgentLoops supports OpenAI as a first-class LLM provider. You can use OpenAI for your agent's LLM calls AND for AgentLoops' reflection/rule generation:
+
 ```python
 from openai import OpenAI
 from agentloops import AgentLoops
 
-# Initialize
+# Initialize — use OpenAI for both the agent and AgentLoops reflection
 client = OpenAI()
-loops = AgentLoops("sales-agent")
+loops = AgentLoops("sales-agent", llm_provider="openai")
 
 def run_agent(prospect_info: str) -> str:
     # Enhance with learned rules
@@ -138,15 +140,21 @@ def weekly_review():
 
 ## LangChain
 
+AgentLoops ships a built-in LangChain callback adapter that auto-tracks chain runs and errors:
+
 ```python
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from agentloops import AgentLoops
+from agentloops.adapters.langchain import AgentLoopsCallback
 
 # Initialize
 loops = AgentLoops("research-agent")
 llm = ChatAnthropic(model="claude-sonnet-4-6")
+
+# Create callback — automatically tracks chain runs
+callback = AgentLoopsCallback(loops, outcome_fn=lambda run: "success" if run.success else "failure")
 
 def create_chain():
     """Create a LangChain chain with learned rules injected."""
@@ -161,64 +169,46 @@ def create_chain():
     chain = prompt | llm | StrOutputParser()
     return chain
 
-def research(query: str) -> str:
-    """Run a research query through the learning-enhanced chain."""
-    chain = create_chain()
-    result = chain.invoke({"query": query})
-    return result
+# Usage — callback auto-tracks every invocation
+chain = create_chain()
+result = chain.invoke({"query": "AI agent market size 2025"}, config={"callbacks": [callback]})
+```
 
+Install the LangChain adapter: `pip install agentloops[langchain]`
+
+You can still track manually if you need more control over outcomes:
+
+```python
 def track_research(query: str, result: str, quality_score: float):
-    """Track the research output quality."""
     loops.track(
         input=query,
         output=result,
         outcome=str(quality_score),  # e.g., "4.5" out of 5
         metadata={"source": "langchain", "model": "claude-sonnet-4-6"},
     )
-
-# With LangChain callbacks for automatic tracking
-from langchain_core.callbacks import BaseCallbackHandler
-
-class AgentLoopsCallback(BaseCallbackHandler):
-    """LangChain callback that auto-tracks runs."""
-    
-    def __init__(self, loops: AgentLoops):
-        self.loops = loops
-        self._current_input = None
-    
-    def on_chain_start(self, serialized, inputs, **kwargs):
-        self._current_input = str(inputs)
-    
-    def on_chain_end(self, outputs, **kwargs):
-        if self._current_input:
-            self.loops.track(
-                input=self._current_input,
-                output=str(outputs),
-                outcome="success",  # Override with actual outcome later
-            )
-
-# Usage with callback
-callback = AgentLoopsCallback(loops)
-chain = create_chain()
-result = chain.invoke({"query": "AI agent market size 2025"}, config={"callbacks": [callback]})
 ```
 
 ---
 
 ## CrewAI
 
+AgentLoops ships a built-in CrewAI callback adapter that tracks task and crew completions:
+
 ```python
 from crewai import Agent, Task, Crew
 from agentloops import AgentLoops
+from agentloops.adapters.crewai import AgentLoopsCrewCallback
 
-# Initialize AgentLoops for each crew member
-sales_loops = AgentLoops("crew-sales-researcher")
-writer_loops = AgentLoops("crew-email-writer")
+# Initialize AgentLoops
+loops = AgentLoops("crew-outreach")
+
+# Create callback — automatically tracks task completions
+callback = AgentLoopsCrewCallback(loops, outcome_fn=lambda task: task.output.quality_score)
 
 # Create agents with enhanced prompts
 researcher = Agent(
     role="Sales Researcher",
-    goal=sales_loops.enhance_prompt(
+    goal=loops.enhance_prompt(
         "Find detailed information about prospects including recent news, "
         "company updates, and personal interests."
     ),
@@ -228,7 +218,7 @@ researcher = Agent(
 
 writer = Agent(
     role="Email Writer",
-    goal=writer_loops.enhance_prompt(
+    goal=loops.enhance_prompt(
         "Write personalized cold emails that get replies. "
         "Every email must feel hand-written, not templated."
     ),
@@ -237,17 +227,14 @@ writer = Agent(
 )
 
 def run_outreach_crew(prospect: dict) -> str:
-    """Run the full outreach crew for a prospect."""
     research_task = Task(
-        description=f"Research {prospect['name']} at {prospect['company']}. "
-                    f"Find recent news, blog posts, and social media activity.",
+        description=f"Research {prospect['name']} at {prospect['company']}.",
         agent=researcher,
         expected_output="A research brief with 3-5 actionable talking points.",
     )
     
     email_task = Task(
-        description="Using the research brief, write a personalized cold email "
-                    "that references specific details about the prospect.",
+        description="Write a personalized cold email using the research brief.",
         agent=writer,
         expected_output="A ready-to-send cold email.",
     )
@@ -255,36 +242,14 @@ def run_outreach_crew(prospect: dict) -> str:
     crew = Crew(
         agents=[researcher, writer],
         tasks=[research_task, email_task],
+        callbacks=[callback],  # Auto-tracks task completions
         verbose=True,
     )
     
-    result = crew.kickoff()
-    
-    # Track both agents' contributions
-    sales_loops.track(
-        input=f"Research {prospect['name']} at {prospect['company']}",
-        output=str(research_task.output) if research_task.output else "",
-        outcome="success",
-        metadata={"prospect": prospect["name"]},
-    )
-    
-    writer_loops.track(
-        input=f"Write email for {prospect['name']}",
-        output=str(result),
-        outcome="success",  # Update later with actual outcome
-        metadata={"prospect": prospect["name"]},
-    )
-    
-    return str(result)
-
-# Weekly learning for the whole crew
-def crew_learning_cycle():
-    for loops in [sales_loops, writer_loops]:
-        loops.reflect(last_n=20)
-        loops.rules.generate_rules()
-        loops.conventions.evolve()
-        loops.forget(max_age_days=21)
+    return str(crew.kickoff())
 ```
+
+Install the CrewAI adapter: `pip install agentloops[crewai]`
 
 ---
 
