@@ -95,6 +95,10 @@ python -c "import urllib.request; exec(urllib.request.urlopen('https://raw.githu
 pip install agentloops
 ```
 
+**Using an AI coding assistant?** Just tell it: *"Install agentloops and add self-learning to my agent."* It will handle the integration automatically. Works with Claude Code, Cursor, Copilot, and others.
+
+Or add it manually — it's 3 lines:
+
 ```python
 from agentloops import AgentLoops
 
