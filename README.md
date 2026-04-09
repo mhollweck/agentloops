@@ -202,10 +202,10 @@ AgentLoops doesn't replace memory — it sits on top of it. Memory stores what h
 
 ## Documentation
 
-- [Getting Started](https://agentloops.dev/docs/quickstart) -- up and running in 5 minutes
-- [7 Mechanisms Deep Dive](https://agentloops.dev/docs/mechanisms) -- how each mechanism works
+- [Getting Started](https://agent-loops.com/docs/quickstart) -- up and running in 5 minutes
+- [7 Mechanisms Deep Dive](https://agent-loops.com/docs/mechanisms) -- how each mechanism works
 - [Examples](https://github.com/mhollweck/agentloops/tree/main/examples) -- real-world usage patterns
-- [API Reference](https://agentloops.dev/docs/api) -- full API documentation
+- [API Reference](https://agent-loops.com/docs/api) -- full API documentation
 
 ## Community
 
