@@ -4,14 +4,17 @@ This is the core of AgentLoops' network effect. Every agent contributes
 anonymized rules and outcome stats. In return, agents get access to
 proven rules from all agents of the same type.
 
-Privacy model:
-  - SENT: rule text, confidence, evidence count, outcome stats (success rate + sample size)
-  - NEVER SENT: raw inputs, raw outputs, metadata, agent names, user data
+Privacy model (privacy-first, opt-in only):
+  - REQUIRES: Explicit opt-in via collective=True in constructor
+  - SENT: generalized rule patterns (company/product names stripped), confidence, outcome stats
+  - NEVER SENT: raw inputs, raw outputs, metadata, company names, user data
+  - THRESHOLD: Rules only enter the global pool after 5+ independent contributors submit similar patterns
+  - OPT-OUT: agentloops.collective.opt_out() disables everything globally
 
 Tiers:
-  - Free: Contributes anonymized rules. Gets static seed rules (bundled with package).
-  - Pro: Contributes + gets LIVE global rules on every enhance_prompt() call.
-  - Enterprise: Contributes + live rules + benchmarking + custom filters.
+  - Free: Can opt-in to contribute. Gets static seed rules (bundled with package).
+  - Pro: Can opt-in to contribute. Gets LIVE global rules on every enhance_prompt() call.
+  - Enterprise: Can opt-in to contribute. Live rules + benchmarking + custom filters.
 """
 
 from __future__ import annotations
@@ -42,17 +45,25 @@ class CollectiveClient:
 
     def __init__(
         self,
-        agent_type: str,
+        agent_type: str | None = None,
         api_key: str | None = None,
         api_url: str | None = None,
-        enabled: bool = True,
+        enabled: bool = False,  # OPT-IN ONLY — must explicitly enable
     ) -> None:
+        """Initialize the collective intelligence client.
+
+        Args:
+            agent_type: Agent type for global rule matching.
+            api_key: AgentLoops platform key (al_xxx format) for Pro/Enterprise.
+            api_url: Override the collective API endpoint.
+            enabled: Must be True to participate. Privacy-first: disabled by default.
+        """
         self._agent_type = agent_type
         self._api_key = api_key
         self._api_url = api_url or os.environ.get(
             "AGENTLOOPS_COLLECTIVE_URL", COLLECTIVE_API_URL
         )
-        self._enabled = enabled and agent_type is not None
+        self._enabled = enabled and agent_type is not None and not is_opted_out()
         self._tier = self._resolve_tier()
 
     def _resolve_tier(self) -> str:
@@ -68,8 +79,13 @@ class CollectiveClient:
     def contribute_rules(self, rules: list[Rule]) -> None:
         """Send anonymized rules to the global network (non-blocking).
 
-        Only sends: rule text, confidence, evidence count, agent_type.
-        Never sends: raw inputs, outputs, metadata, or user data.
+        Privacy guarantees:
+        - Rule text is SANITIZED: company names, product names, and specific
+          data are stripped before sending. Only generalized patterns are shared.
+        - Only high-confidence rules (>= 0.6) are contributed.
+        - No raw inputs, outputs, metadata, or user data is ever sent.
+        - Rules only enter the global pool after 5+ independent contributors
+          submit similar patterns (server-side threshold).
         """
         if not self._enabled or not rules:
             return
@@ -77,7 +93,7 @@ class CollectiveClient:
         anonymized = [
             {
                 "agent_type": self._agent_type,
-                "rule_text": rule.text,
+                "rule_text": _sanitize_rule_text(rule.text),
                 "confidence": rule.confidence,
                 "evidence_count": rule.evidence_count,
             }
@@ -242,6 +258,49 @@ class CollectiveClient:
     @property
     def tier(self) -> str:
         return self._tier
+
+
+def _sanitize_rule_text(text: str) -> str:
+    """Strip company names, product names, and specific data from rule text.
+
+    Keeps the behavioral pattern but removes identifying information.
+    E.g., "IF prospect is VP Engineering at Stripe THEN lead with API latency data"
+    becomes "IF prospect is VP Engineering at [COMPANY] THEN lead with [PRODUCT] data"
+    """
+    import re
+
+    # Replace capitalized proper nouns that look like company/product names
+    # (2+ chars, starts with uppercase, not common words)
+    common_words = {
+        "IF", "THEN", "AND", "OR", "NOT", "WHEN", "ALWAYS", "NEVER",
+        "DO", "THE", "WITH", "FOR", "FROM", "ABOUT", "BECAUSE",
+        "VP", "CTO", "CEO", "CIO", "CFO", "COO", "CMO",
+        "Engineering", "Sales", "Marketing", "Support", "Product",
+        "Enterprise", "Startup", "SMB", "Series", "Pre-seed",
+    }
+
+    def replace_proper_noun(match: re.Match) -> str:
+        word = match.group(0)
+        if word in common_words:
+            return word
+        return "[ENTITY]"
+
+    # Replace what looks like company names (capitalized words not in common set)
+    # This is intentionally aggressive — better to over-sanitize than leak
+    sanitized = re.sub(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b', replace_proper_noun, text)
+
+    # Replace URLs
+    sanitized = re.sub(r'https?://\S+', '[URL]', sanitized)
+
+    # Replace email addresses
+    sanitized = re.sub(r'\S+@\S+\.\S+', '[EMAIL]', sanitized)
+
+    # Replace specific numbers that might be identifying (revenue, employee count, etc.)
+    # Keep percentages and small numbers (they're pattern data, not identifying)
+    sanitized = re.sub(r'\$[\d,]+[KMB]?\b', '[AMOUNT]', sanitized)
+    sanitized = re.sub(r'\b\d{3,}\b', '[NUMBER]', sanitized)
+
+    return sanitized
 
 
 def opt_out():

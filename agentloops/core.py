@@ -57,6 +57,7 @@ class AgentLoops:
         user_id: str | None = None,
         llm_provider: str = "anthropic",
         llm_fn: LLMCallable | None = None,
+        collective: bool = False,
     ) -> None:
         """Initialize AgentLoops.
 
@@ -75,6 +76,8 @@ class AgentLoops:
             user_id: User ID for multi-tenant scoping (for storage="supabase").
             llm_provider: LLM provider: "anthropic" (default), "openai", or "custom".
             llm_fn: Custom LLM function(prompt) -> str. Required when llm_provider="custom".
+            collective: Opt-in to Collective Intelligence. When True, anonymized rules
+                are contributed to the global network. Privacy-first: disabled by default.
         """
         # Resolve supabase config from env vars if not provided
         supabase_url = supabase_url or os.environ.get("AGENTLOOPS_SUPABASE_URL")
@@ -131,11 +134,11 @@ class AgentLoops:
         self._rule_engine._call_llm = _llm_client
         self._convention_store._call_llm = _llm_client
 
-        # Initialize collective intelligence client
+        # Initialize collective intelligence client (opt-in only)
         self._collective = CollectiveClient(
             agent_type=agent_type,
             api_key=api_key if api_key and api_key.startswith("al_") else None,
-            enabled=not is_opted_out(),
+            enabled=collective,  # Must explicitly opt in
         )
 
         # Load seed rules for the agent type (only if no rules exist yet)
