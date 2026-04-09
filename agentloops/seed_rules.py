@@ -4,9 +4,10 @@ When an agent is initialized with an agent_type, it gets starter rules
 from the Collective Intelligence pool — proven patterns from real agents.
 
 Everyone contributes anonymized learnings. You pay for freshness:
-  - Free:       Contributes + gets static snapshot (bundled with release)
-  - Pro $99:    Contributes + gets live global rules (updated daily)
-  - Enterprise: Contributes + live rules + benchmarking + custom filters
+  - Free ($0):       3 agent types, static snapshot (bundled with release)
+  - Pro ($99/mo):    Unlimited types, live global rules (updated daily)
+  - Team ($249/mo):  Shared namespace across org's agents
+  - Enterprise:      Live rules + benchmarking + dedicated support
 
 The more agents on the network, the smarter ALL agents become.
 This is the Waze model: free map is great, live traffic data is what you pay for.

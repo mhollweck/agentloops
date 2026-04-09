@@ -11,7 +11,11 @@ openai = ["openai>=1.0"]
 supabase = ["supabase>=2.0"]
 langchain = ["langchain-core>=0.3"]
 crewai = ["crewai>=0.80"]
-all = ["openai>=1.0", "supabase>=2.0", "langchain-core>=0.3", "crewai>=0.80"]
+mcp = ["mcp[cli]>=1.0"]
+all = ["openai>=1.0", "supabase>=2.0", "langchain-core>=0.3", "crewai>=0.80", "mcp[cli]>=1.0"]
+
+[project.scripts]
+agentloops-mcp = "agentloops_mcp.server:main"
 
 [build-system]
 requires = ["hatchling"]

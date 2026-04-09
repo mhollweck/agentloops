@@ -156,11 +156,12 @@ When collective intelligence is active, meta-learnings are shared too -- new cus
 
 **What's coming (the network):** Every user contributes anonymized learnings. You pay for freshness and depth:
 
-| Tier | Contributes? | Intelligence |
-|------|-------------|-------------|
-| **Free** | Yes (anonymized) | Curated starter rules bundled with the package |
-| **Pro** | Yes | Live global rules updated from the network |
-| **Enterprise** | Yes | Live rules + benchmarking + custom filters |
+| Tier | Price | Intelligence |
+|------|-------|-------------|
+| **Free** | $0 | 3 agent types, manual learning triggers, curated starter rules |
+| **Pro** | $99/mo | Unlimited agent types, auto learning, live global rules from network |
+| **Team** | $249/mo | Shared namespace across org's agents, team analytics |
+| **Enterprise** | Contact us | Live rules + benchmarking + custom filters + dedicated support |
 
 No other tool does this. Mem0 stores facts. Letta learns inside their platform. **AgentLoops learns across the entire ecosystem.**
 
@@ -303,6 +304,28 @@ Built-in checks catch empty outputs, hallucination markers, and length violation
 | Focus | **Learning** | Storage | Stateful agents | -- |
 
 AgentLoops is not a replacement for memory systems. It's the layer that sits on top of them and actually *learns*.
+
+## MCP Server — No Code Needed
+
+Don't write Python? Use AgentLoops via MCP with any compatible agent:
+
+```bash
+pip install agentloops[mcp]
+```
+
+```json
+{
+  "mcpServers": {
+    "agentloops": {
+      "command": "python",
+      "args": ["-m", "agentloops_mcp"],
+      "env": { "ANTHROPIC_API_KEY": "sk-ant-..." }
+    }
+  }
+}
+```
+
+Your agent gets 7 tools: `recall`, `remember`, `reflect`, `get_rules`, `check`, `enhance_prompt`, `list_agent_types`. Same learning engine, zero code. See [MCP docs](https://agent-loops.com/docs/mcp) for details.
 
 ## Framework Agnostic
 

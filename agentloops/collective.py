@@ -13,9 +13,10 @@ Privacy model:
   - THRESHOLD: Rules only enter the global pool after 5+ independent contributors submit similar patterns
 
 Tiers:
-  - Free: Contributes + gets static seed rules (bundled with package).
-  - Pro: Contributes + gets LIVE global rules (updated daily from the network).
-  - Enterprise: Contributes (can opt out) + live rules + benchmarking + custom filters.
+  - Free ($0): 3 agent types, static seed rules (bundled with package).
+  - Pro ($99/mo): Unlimited types, live global rules (updated daily from the network).
+  - Team ($249/mo): Shared namespace across org's agents, team analytics.
+  - Enterprise: Live rules + benchmarking + dedicated support.
 """
 
 from __future__ import annotations

@@ -52,7 +52,7 @@ Before diving into individual mechanisms, here's how they fit together:
 
 ## Auto-Detection
 
-When `auto_learn=True` (the default for Pro/Enterprise tiers), AgentLoops automatically triggers learning mechanisms without manual calls. Four triggers drive this:
+When `auto_learn=True` (the default for Pro/Team/Enterprise tiers), AgentLoops automatically triggers learning mechanisms without manual calls. Four triggers drive this:
 
 ### 1. Outcome Threshold
 

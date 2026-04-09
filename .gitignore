@@ -11,3 +11,15 @@ __pycache__/
 _internal/
 INVESTOR_MEMO.md
 TEST_TRACKING.md
+
+# Platform code — private (the paid product)
+server/
+dashboard/
+supabase/
+
+# Build artifacts
+dist/
+*.egg-info/
+build/
+demo.gif
+uv.lock

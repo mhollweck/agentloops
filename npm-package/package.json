@@ -1,0 +1,30 @@
+{
+  "name": "agentloops-mcp",
+  "version": "0.1.0",
+  "description": "Self-learning for AI agents — MCP server. Your agents have memory, now give them a brain.",
+  "bin": {
+    "agentloops-mcp": "./bin/agentloops-mcp.js"
+  },
+  "keywords": [
+    "mcp",
+    "ai-agents",
+    "self-learning",
+    "agentloops",
+    "model-context-protocol",
+    "claude",
+    "rules",
+    "collective-intelligence"
+  ],
+  "author": "Maria Hollweck <maria@asobi.dev>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mhollweck/agentloops"
+  },
+  "homepage": "https://agent-loops.com",
+  "files": [
+    "bin/",
+    "README.md",
+    "LICENSE"
+  ]
+}

@@ -1,0 +1,28 @@
+# Smithery.ai MCP server configuration
+# https://smithery.ai
+
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      anthropicApiKey:
+        type: string
+        description: "Anthropic API key for LLM-powered reflection"
+      openaiApiKey:
+        type: string
+        description: "OpenAI API key (alternative to Anthropic)"
+      storagePath:
+        type: string
+        description: "Directory for local storage (defaults to system temp)"
+    required: []
+  commandFunction: |-
+    (config) => ({
+      command: "python",
+      args: ["-m", "agentloops_mcp"],
+      env: {
+        ANTHROPIC_API_KEY: config.anthropicApiKey || "",
+        OPENAI_API_KEY: config.openaiApiKey || "",
+        AGENTLOOPS_STORAGE_PATH: config.storagePath || ""
+      }
+    })

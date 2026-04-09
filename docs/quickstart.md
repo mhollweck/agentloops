@@ -28,11 +28,12 @@ That's it. AgentLoops creates a `.agentloops/my-agent/` directory in your workin
 
 | Tier | Usage | What you get |
 |------|-------|-------------|
-| **Free** | `AgentLoops("my-agent")` | Local storage, manual triggers for `reflect()`, `evolve()`, `forget()` |
-| **Pro** | `AgentLoops("my-agent", agent_type="sales-sdr", storage="supabase", supabase_url="...", supabase_key="...")` | Cloud storage, auto-learn, dashboard, pre-seeded rules for your agent type |
-| **Enterprise** | Same constructor + org config | Cross-customer intelligence, benchmarking, team management |
+| **Free** ($0) | `AgentLoops("my-agent")` | Local storage, 3 agent types, manual triggers for `reflect()`, `evolve()`, `forget()` |
+| **Pro** ($99/mo) | `AgentLoops("my-agent", agent_type="sales-sdr", storage="supabase", supabase_url="...", supabase_key="...")` | Cloud storage, unlimited agent types, auto-learn, dashboard, live global rules |
+| **Team** ($249/mo) | Same constructor + org config | Shared namespace across org's agents, team analytics |
+| **Enterprise** | Contact us | Cross-customer intelligence, benchmarking, dedicated support |
 
-**Free** is fully functional -- you call `reflect()`, `evolve()`, and `forget()` manually. **Pro** adds automatic learning triggers (reflection after N outcomes, spike detection, evolution on schedule) plus a dashboard to visualize your agent's improvement. **Enterprise** adds cross-customer intelligence (anonymized patterns from all agents of the same type) and team features.
+**Free** is fully functional -- you call `reflect()`, `evolve()`, and `forget()` manually. **Pro** ($99/mo) adds automatic learning triggers (reflection after N outcomes, spike detection, evolution on schedule) plus a dashboard and live rules from the collective intelligence network. **Team** ($249/mo) adds shared memory across your org's agents. **Enterprise** adds cross-customer intelligence, benchmarking, and dedicated support.
 
 ### Configuration Options
 
