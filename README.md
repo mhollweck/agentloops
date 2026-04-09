@@ -158,15 +158,6 @@ meta_rules = loops.meta_learner.get_meta_rules()
 
 When collective intelligence is active, meta-learnings are shared too -- new customers don't just get starter rules, they get starter *learning strategies*.
 
-**What's coming (the network):** Every user contributes anonymized learnings. You pay for freshness and depth:
-
-| Tier | Price | Intelligence |
-|------|-------|-------------|
-| **Free** | $0 | 3 agent types, manual learning triggers, curated starter rules |
-| **Pro** | $99/mo | Unlimited agent types, auto learning, live global rules from network |
-| **Team** | $249/mo | Shared namespace across org's agents, team analytics |
-| **Enterprise** | Contact us | Live rules + benchmarking + custom filters + dedicated support |
-
 No other tool does this. Mem0 stores facts. Letta learns inside their platform. **AgentLoops learns across the entire ecosystem.**
 
 ## Before vs After
