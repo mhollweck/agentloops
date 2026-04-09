@@ -1,6 +1,6 @@
 [project]
 name = "agentloops"
-version = "0.1.1"
+version = "0.1.2"
 description = "The intelligence layer for AI agents. Self-learning loops that make your agents smarter over time."
 readme = "README.md"
 license = {text = "MIT"}

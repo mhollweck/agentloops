@@ -21,9 +21,11 @@ Tiers:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
+import re
 import threading
 from typing import Any
 
@@ -31,7 +33,25 @@ from agentloops.models import Rule
 
 logger = logging.getLogger("agentloops.collective")
 
-COLLECTIVE_API_URL = "https://api.agent-loops.com/v1/collective"
+# Supabase project for collective intelligence
+SUPABASE_URL = "https://ynbypsidwwaoxkzwkmjm.supabase.co"
+SUPABASE_ANON_KEY = os.environ.get(
+    "AGENTLOOPS_SUPABASE_ANON_KEY",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluYnlwc2lkd3dhb3hrendrbWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3NjQxODksImV4cCI6MjA5MTM0MDE4OX0.BtHi7uiPEDFkTJ-QVHEn1UeTuzNI1EXswoEvOLv_ksc",
+)
+
+# Legacy API URL (will be replaced by Supabase, kept for env override)
+COLLECTIVE_API_URL = os.environ.get(
+    "AGENTLOOPS_COLLECTIVE_URL",
+    f"{SUPABASE_URL}/rest/v1",
+)
+
+
+def _fingerprint(agent_type: str, rule_text: str) -> str:
+    """Generate a stable fingerprint for dedup. Same rule from different users = same fingerprint."""
+    normalized = re.sub(r'\s+', ' ', rule_text.strip().lower())
+    raw = f"{agent_type}:{normalized}"
+    return hashlib.sha256(raw.encode()).hexdigest()[:32]
 
 
 class CollectiveClient:
@@ -52,20 +72,11 @@ class CollectiveClient:
         api_url: str | None = None,
         enabled: bool = True,  # On by default when agent_type is set
     ) -> None:
-        """Initialize the collective intelligence client.
-
-        Args:
-            agent_type: Agent type for global rule matching.
-            api_key: AgentLoops platform key (al_xxx format) for Pro/Enterprise.
-            api_url: Override the collective API endpoint.
-            enabled: Contribution is on by default when agent_type is set.
-                     Opt out with collective=False or agentloops.collective.opt_out().
-        """
         self._agent_type = agent_type
         self._api_key = api_key
-        self._api_url = api_url or os.environ.get(
-            "AGENTLOOPS_COLLECTIVE_URL", COLLECTIVE_API_URL
-        )
+        self._supabase_url = os.environ.get("AGENTLOOPS_SUPABASE_URL", SUPABASE_URL)
+        self._supabase_anon_key = os.environ.get("AGENTLOOPS_SUPABASE_ANON_KEY", SUPABASE_ANON_KEY)
+        self._api_url = api_url or COLLECTIVE_API_URL
         self._enabled = enabled and agent_type is not None and not is_opted_out()
         self._tier = self._resolve_tier()
 
@@ -73,9 +84,20 @@ class CollectiveClient:
         if not self._enabled:
             return "disabled"
         if self._api_key:
-            # Could check key format for enterprise vs pro
             return "pro"
         return "free"
+
+    def _supabase_headers(self, *, service_role: bool = False) -> dict[str, str]:
+        """Headers for Supabase REST API calls."""
+        key = self._supabase_anon_key
+        if service_role:
+            key = os.environ.get("AGENTLOOPS_SUPABASE_SERVICE_KEY", key)
+        return {
+            "apikey": key,
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json",
+            "Prefer": "return=minimal",
+        }
 
     # -- Contributing rules to the network ---------------------------------
 
@@ -93,15 +115,20 @@ class CollectiveClient:
         if not self._enabled or not rules:
             return
 
+        if not self._supabase_anon_key:
+            logger.debug("No Supabase anon key — skipping collective contribution")
+            return
+
         anonymized = [
             {
                 "agent_type": self._agent_type,
                 "rule_text": _sanitize_rule_text(rule.text),
                 "confidence": rule.confidence,
                 "evidence_count": rule.evidence_count,
+                "fingerprint": _fingerprint(self._agent_type, _sanitize_rule_text(rule.text)),
             }
             for rule in rules
-            if rule.active and rule.confidence >= 0.6  # Only contribute validated rules
+            if rule.active and rule.confidence >= 0.6
         ]
 
         if not anonymized:
@@ -120,11 +147,11 @@ class CollectiveClient:
         success_rate: float,
         sample_size: int,
     ) -> None:
-        """Send anonymized outcome stats (non-blocking).
-
-        Only sends: agent_type, success rate, sample size.
-        """
+        """Send anonymized outcome stats (non-blocking)."""
         if not self._enabled:
+            return
+
+        if not self._supabase_anon_key:
             return
 
         stats = {
@@ -148,9 +175,8 @@ class CollectiveClient:
         Only available for Pro/Enterprise tiers (requires api_key).
         Free tier uses static seed rules bundled with the package.
 
-        Returns:
-            List of Rule objects from the global network.
-            Empty list if disabled, no api_key, or network error.
+        Returns rules that have been contributed by 5+ independent users
+        (the privacy threshold).
         """
         if self._tier not in ("pro", "enterprise"):
             return []
@@ -158,13 +184,24 @@ class CollectiveClient:
         try:
             import urllib.request
 
-            req = urllib.request.Request(
-                f"{self._api_url}/rules/{self._agent_type}",
-                headers={
-                    "Authorization": f"Bearer {self._api_key}",
-                    "Content-Type": "application/json",
-                },
+            # Query Supabase for rules with contributor_count >= 5
+            service_key = os.environ.get("AGENTLOOPS_SUPABASE_SERVICE_KEY", "")
+            if not service_key:
+                logger.debug("No service key — can't pull global rules")
+                return []
+
+            url = (
+                f"{self._supabase_url}/rest/v1/collective_rules"
+                f"?agent_type=eq.{self._agent_type}"
+                f"&contributor_count=gte.5"
+                f"&select=rule_text,confidence,evidence_count,contributor_count"
+                f"&order=contributor_count.desc"
+                f"&limit=50"
             )
+            req = urllib.request.Request(url, headers={
+                "apikey": service_key,
+                "Authorization": f"Bearer {service_key}",
+            })
             with urllib.request.urlopen(req, timeout=5) as resp:
                 data = json.loads(resp.read().decode())
 
@@ -173,9 +210,9 @@ class CollectiveClient:
                     text=r["rule_text"],
                     confidence=r["confidence"],
                     evidence_count=r.get("evidence_count", 1),
-                    evidence=[f"global:{self._agent_type}"],
+                    evidence=[f"global:{self._agent_type}:n={r.get('contributor_count', 5)}"],
                 )
-                for r in data.get("rules", [])
+                for r in data
             ]
         except Exception as e:
             logger.debug(f"Failed to pull global rules: {e}")
@@ -184,25 +221,41 @@ class CollectiveClient:
     # -- Benchmarking (Enterprise only) ------------------------------------
 
     def get_benchmark(self) -> dict[str, Any] | None:
-        """Get benchmarking data for this agent type (Enterprise only).
-
-        Returns percentile ranking compared to all agents of the same type.
-        """
+        """Get benchmarking data for this agent type (Enterprise only)."""
         if self._tier != "enterprise":
             return None
 
         try:
             import urllib.request
 
-            req = urllib.request.Request(
-                f"{self._api_url}/benchmark/{self._agent_type}",
-                headers={
-                    "Authorization": f"Bearer {self._api_key}",
-                    "Content-Type": "application/json",
-                },
+            service_key = os.environ.get("AGENTLOOPS_SUPABASE_SERVICE_KEY", "")
+            if not service_key:
+                return None
+
+            url = (
+                f"{self._supabase_url}/rest/v1/collective_outcome_stats"
+                f"?agent_type=eq.{self._agent_type}"
+                f"&select=success_rate,sample_size"
+                f"&order=created_at.desc"
+                f"&limit=100"
             )
+            req = urllib.request.Request(url, headers={
+                "apikey": service_key,
+                "Authorization": f"Bearer {service_key}",
+            })
             with urllib.request.urlopen(req, timeout=5) as resp:
-                return json.loads(resp.read().decode())
+                data = json.loads(resp.read().decode())
+
+            if not data:
+                return None
+
+            rates = [d["success_rate"] for d in data]
+            return {
+                "agent_type": self._agent_type,
+                "network_avg_success_rate": round(sum(rates) / len(rates), 4),
+                "network_sample_count": len(rates),
+                "network_total_runs": sum(d["sample_size"] for d in data),
+            }
         except Exception as e:
             logger.debug(f"Failed to get benchmark: {e}")
             return None
@@ -210,45 +263,50 @@ class CollectiveClient:
     # -- Internal network helpers ------------------------------------------
 
     def _send_contribution(self, anonymized_rules: list[dict]) -> None:
-        """Send anonymized rules to the collective API."""
+        """Send anonymized rules to Supabase via RPC (upsert with dedup)."""
         try:
             import urllib.request
 
-            data = json.dumps({
-                "agent_type": self._agent_type,
-                "rules": anonymized_rules,
-            }).encode()
+            headers = self._supabase_headers()
 
-            req = urllib.request.Request(
-                f"{self._api_url}/contribute",
-                data=data,
-                headers={"Content-Type": "application/json"},
-                method="POST",
-            )
-            if self._api_key:
-                req.add_header("Authorization", f"Bearer {self._api_key}")
+            for rule in anonymized_rules:
+                # Call the upsert_collective_rule function via Supabase RPC
+                data = json.dumps({
+                    "p_agent_type": rule["agent_type"],
+                    "p_rule_text": rule["rule_text"],
+                    "p_confidence": rule["confidence"],
+                    "p_evidence_count": rule["evidence_count"],
+                    "p_fingerprint": rule["fingerprint"],
+                }).encode()
 
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                logger.debug(f"Contributed {len(anonymized_rules)} rules")
+                req = urllib.request.Request(
+                    f"{self._supabase_url}/rest/v1/rpc/upsert_collective_rule",
+                    data=data,
+                    headers=headers,
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    pass  # 200/204 = success
+
+            logger.debug(f"Contributed {len(anonymized_rules)} rules to collective")
         except Exception as e:
             # Never crash the agent for a network error
             logger.debug(f"Contribution failed (non-blocking): {e}")
 
     def _send_stats(self, stats: dict) -> None:
-        """Send anonymized outcome stats."""
+        """Send anonymized outcome stats to Supabase."""
         try:
             import urllib.request
 
             data = json.dumps(stats).encode()
+            headers = self._supabase_headers()
+
             req = urllib.request.Request(
-                f"{self._api_url}/stats",
+                f"{self._supabase_url}/rest/v1/collective_outcome_stats",
                 data=data,
-                headers={"Content-Type": "application/json"},
+                headers=headers,
                 method="POST",
             )
-            if self._api_key:
-                req.add_header("Authorization", f"Bearer {self._api_key}")
-
             with urllib.request.urlopen(req, timeout=5) as resp:
                 logger.debug("Stats contributed")
         except Exception as e:
@@ -270,10 +328,6 @@ def _sanitize_rule_text(text: str) -> str:
     E.g., "IF prospect is VP Engineering at Stripe THEN lead with API latency data"
     becomes "IF prospect is VP Engineering at [COMPANY] THEN lead with [PRODUCT] data"
     """
-    import re
-
-    # Replace capitalized proper nouns that look like company/product names
-    # (2+ chars, starts with uppercase, not common words)
     common_words = {
         "IF", "THEN", "AND", "OR", "NOT", "WHEN", "ALWAYS", "NEVER",
         "DO", "THE", "WITH", "FOR", "FROM", "ABOUT", "BECAUSE",
@@ -289,7 +343,6 @@ def _sanitize_rule_text(text: str) -> str:
         return "[ENTITY]"
 
     # Replace what looks like company names (capitalized words not in common set)
-    # This is intentionally aggressive — better to over-sanitize than leak
     sanitized = re.sub(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b', replace_proper_noun, text)
 
     # Replace URLs
@@ -298,8 +351,7 @@ def _sanitize_rule_text(text: str) -> str:
     # Replace email addresses
     sanitized = re.sub(r'\S+@\S+\.\S+', '[EMAIL]', sanitized)
 
-    # Replace specific numbers that might be identifying (revenue, employee count, etc.)
-    # Keep percentages and small numbers (they're pattern data, not identifying)
+    # Replace specific numbers that might be identifying
     sanitized = re.sub(r'\$[\d,]+[KMB]?\b', '[AMOUNT]', sanitized)
     sanitized = re.sub(r'\b\d{3,}\b', '[NUMBER]', sanitized)
 
@@ -307,14 +359,7 @@ def _sanitize_rule_text(text: str) -> str:
 
 
 def opt_out():
-    """Globally disable collective intelligence contribution.
-
-    Call this if you don't want any data sent to the network.
-
-    Usage:
-        import agentloops.collective
-        agentloops.collective.opt_out()
-    """
+    """Globally disable collective intelligence contribution."""
     os.environ["AGENTLOOPS_COLLECTIVE_DISABLED"] = "1"
 
 
