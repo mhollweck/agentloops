@@ -1,10 +1,30 @@
 [project]
 name = "agentloops"
-version = "0.1.0"
+version = "0.1.1"
 description = "The intelligence layer for AI agents. Self-learning loops that make your agents smarter over time."
+readme = "README.md"
+license = {text = "MIT"}
 authors = [{name = "Maria Hollweck", email = "maria@asobi.dev"}]
 requires-python = ">=3.10"
 dependencies = ["anthropic>=0.40.0"]
+keywords = ["ai", "agents", "self-learning", "rules", "memory", "mcp", "langchain", "crewai"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.urls]
+Homepage = "https://agent-loops.com"
+Repository = "https://github.com/mhollweck/agentloops"
+Documentation = "https://agent-loops.com/docs"
+Discord = "https://discord.gg/mwQZQCRp"
 
 [project.optional-dependencies]
 openai = ["openai>=1.0"]
