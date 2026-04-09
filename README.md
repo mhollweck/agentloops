@@ -34,6 +34,61 @@ Frameworks    Observability    Memory          ???         Evaluation
 
 Memory stores what happened. **AgentLoops extracts why it worked** and feeds that back into your agents automatically.
 
+## See It Work (30 seconds, no API key needed)
+
+```bash
+pip install agentloops
+python -c "import urllib.request; exec(urllib.request.urlopen('https://raw.githubusercontent.com/mhollweck/agentloops/main/examples/quickstart/main.py').read())"
+```
+
+<details>
+<summary><strong>Output: watch your agent go from 62% → 100%</strong></summary>
+
+```
+  ╔══════════════════════════════════════════════════════════╗
+  ║     AgentLoops — Watch Your Agent Learn in Real Time    ║
+  ╚══════════════════════════════════════════════════════════╝
+
+  PHASE 1: Agent runs without learning
+  ──────────────────────────────────────────────────────
+    ✓ meeting_booked       │ VP Eng at Stripe — personalized technical email
+    ✓ replied              │ CTO at startup — case study approach
+    ✗ no_reply             │ Director at Shopify — listicle subject
+    ✓ meeting_booked       │ VP Eng at Datadog — question about their product
+    ✓ meeting_booked       │ Head of Eng at SaaS — congratulated on launch
+    ✗ unsubscribed         │ CIO at Wells Fargo — listicle subject
+    ✓ meeting_booked       │ VP Eng at Notion — observed their API latency
+    ✗ no_reply             │ CTO at tiny startup — generic advice
+
+  Success rate: 62%       Active rules: 0
+
+  LEARNING: Extracting rules from performance data...
+  ──────────────────────────────────────────────────────
+    [92%] IF prospect is VP Engineering THEN lead with technical observation
+    [85%] IF subject is listicle style THEN avoid for enterprise
+    [75%] IF prospect had a recent public event THEN reference it
+
+  PHASE 2: Agent runs WITH learned rules
+  ──────────────────────────────────────────────────────
+    ✓ meeting_booked       │ VP Eng at Cloudflare — observed Workers API latency
+    ✓ meeting_booked       │ VP Eng at Twilio — noted Voice API incidents
+    ✓ replied              │ CTO at 30-person SaaS — ROI case study
+    ✓ meeting_booked       │ VP Eng at Figma — praised real-time collab speed
+
+  Success rate: 100%
+
+  QUALITY GATE: Checking output before sending...
+    Personalized email: PASS ✓ (score: 1.0)
+    Listicle email:     FAIL ✗ ⚠ Output uses listicle pattern which rule says to avoid
+
+  ╔══════════════════════════════════════════════════════════╗
+  ║  RESULT: 62% → 100% success rate                       ║
+  ║  Your agent just learned from its own performance.      ║
+  ╚══════════════════════════════════════════════════════════╝
+```
+
+</details>
+
 ## Quick Start
 
 ```bash
