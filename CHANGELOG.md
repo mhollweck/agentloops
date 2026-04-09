@@ -3,6 +3,7 @@
 ## [0.1.0] - 2026-04-09
 
 ### Added
+- Meta-learner: tracks rule impact (outcomes before vs after), reflection quality (adoption rate + impact), learning patterns, and generates meta-rules injected into reflection prompts. Access via `loops.meta_learner`.
 - Core AgentLoops class with track(), reflect(), enhance_prompt(), forget(), check()
 - 7 self-learning mechanisms: Reflector, RuleEngine, ConventionStore, Forgetter, Tracker, QualityGates, SpikeResponse
 - Quality Gates (mechanism #7) -- pre-flight validation with built-in, rule-based, and custom checks

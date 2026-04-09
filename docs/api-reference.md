@@ -177,8 +177,122 @@ check(
 | `conventions` | `ConventionStore` | Direct access to the convention store. |
 | `tracker` | `Tracker` | Direct access to the tracker. |
 | `quality_gate` | `QualityGate` | Direct access to the quality gate instance. |
+| `meta_learner` | `MetaLearner` | Direct access to the meta-learner for learning quality insights. |
 | `outcome` | `OutcomeConfig` | The outcome configuration for this agent. |
 | `agent_name` | `str` | The name of the agent this instance manages. |
+
+---
+
+## MetaLearner
+
+Tracks the quality of the learning process itself and generates meta-rules to improve future reflections.
+
+```python
+from agentloops import MetaLearner
+```
+
+### Constructor
+
+```python
+MetaLearner(
+    storage: BaseStorage,
+    agent_name: str,
+)
+```
+
+### Methods
+
+#### `get_rule_impacts()`
+
+Get impact data for rules, showing outcomes before vs after each rule was applied.
+
+```python
+get_rule_impacts() -> list[RuleImpact]
+```
+
+**Returns:** `list[RuleImpact]` -- impact records for rules that have enough data.
+
+---
+
+#### `get_best_rule_patterns()`
+
+Analyze which rule characteristics correlate with positive outcomes.
+
+```python
+get_best_rule_patterns() -> dict[str, Any]
+```
+
+**Returns:** Dict with pattern analysis, including:
+- `"evidence_vs_no_evidence"` -- impact comparison of rules with vs without evidence
+- `"avoid_vs_do"` -- impact comparison of "avoid" rules vs "do" rules
+- `"confidence_correlation"` -- how confidence level correlates with actual impact
+
+---
+
+#### `get_meta_rules()`
+
+Get generated meta-rules that guide future reflections.
+
+```python
+get_meta_rules() -> list[str]
+```
+
+**Returns:** `list[str]` -- meta-guidance strings injected into reflection prompts (e.g., "Rules with specific evidence outperform abstract rules by 2x -- always cite run IDs").
+
+---
+
+#### `track_reflection_quality()`
+
+Score a reflection's quality based on adoption rate and downstream impact of its suggested rules.
+
+```python
+track_reflection_quality(reflection_id: str) -> ReflectionQuality
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `reflection_id` | `str` | ID of the reflection to evaluate. |
+
+**Returns:** `ReflectionQuality` -- quality score with adoption and impact breakdown.
+
+---
+
+## RuleImpact
+
+Impact data for a single rule, comparing outcomes before and after application.
+
+```python
+from agentloops import RuleImpact
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `rule_id` | `str` | The rule being measured. |
+| `rule_text` | `str` | The IF/THEN rule text. |
+| `outcomes_before` | `dict[str, float]` | Success rate and run count before the rule was active. |
+| `outcomes_after` | `dict[str, float]` | Success rate and run count after the rule was active. |
+| `impact_score` | `float` | Net change in success rate (-1.0 to 1.0). |
+
+Methods: `to_dict() -> dict`, `from_dict(d: dict) -> RuleImpact`
+
+---
+
+## ReflectionQuality
+
+Quality score for a reflection pass, based on how its suggested rules performed.
+
+```python
+from agentloops import ReflectionQuality
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `reflection_id` | `str` | The reflection being evaluated. |
+| `adoption_rate` | `float` | Fraction of suggested rules that were actually generated and activated (0.0-1.0). |
+| `avg_impact` | `float` | Average impact score of adopted rules. |
+| `quality_score` | `float` | Composite score combining adoption rate and impact. |
+
+Methods: `to_dict() -> dict`, `from_dict(d: dict) -> ReflectionQuality`
 
 ---
 

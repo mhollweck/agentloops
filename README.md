@@ -86,6 +86,19 @@ This is the Waze model. The free map is great. The live traffic data is what mak
 
 **What's available now:** 10 agent types with curated starter rules (`sales-sdr`, `customer-support`, `content-creator`, and 7 more). Your agent starts smart on day 1 instead of learning from scratch.
 
+## Meta-Learning — The Learning Engine Learns Too
+
+AgentLoops doesn't just improve your agent's behavior -- it improves the quality of its own learning over time. The meta-learner tracks which reflections produce impactful rules, which rule formats (evidence-backed vs not, "avoid" vs "do", confidence levels) correlate with positive outcomes, and generates meta-rules that get injected into future reflection prompts. The result: your agent's learning gets sharper with every cycle, not just its behavior.
+
+```python
+# Access meta-learning insights
+impacts = loops.meta_learner.get_rule_impacts()
+patterns = loops.meta_learner.get_best_rule_patterns()
+meta_rules = loops.meta_learner.get_meta_rules()
+```
+
+When collective intelligence is active, meta-learnings are shared too -- new customers don't just get starter rules, they get starter *learning strategies*.
+
 **What's coming (the network):** Every user contributes anonymized learnings. You pay for freshness and depth:
 
 | Tier | Contributes? | Intelligence |

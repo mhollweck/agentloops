@@ -605,6 +605,60 @@ All data lives locally by default in `.agentloops/{agent_name}/`:
 
 You can implement a custom storage backend by subclassing `BaseStorage` for databases, cloud storage, or shared state across agent fleets.
 
+## Meta-Learning
+
+The learning system uses AgentLoops on itself. While the 7 mechanisms above improve your agent's *behavior*, meta-learning improves the *quality of learning itself* over time.
+
+### What it tracks
+
+**Rule Impact** -- Did applying a rule actually improve outcomes? For each rule, the meta-learner compares success rates before vs after the rule was active (using `RuleImpact` with `outcomes_before` and `outcomes_after`). This answers: "Are the rules we're generating actually helping?"
+
+**Reflection Quality** -- Did a reflection produce useful rules? Each reflection gets scored on adoption rate (how many suggested rules were actually generated) and downstream impact (did those rules improve outcomes). Low-quality reflections are signals to adjust.
+
+**Learning Patterns** -- What rule characteristics correlate with positive impact? The meta-learner analyzes whether evidence-backed rules outperform abstract ones, whether "avoid" rules work better than "do" rules, and how confidence levels correlate with actual outcomes.
+
+**Meta-Rules** -- Generated guidance that gets injected into the reflection prompt to make future reflections better. Examples: "Rules citing specific run evidence outperform abstract rules by 2x" or "Avoid rules have 30% higher impact than do rules in this agent's domain."
+
+### How it fits in
+
+```
+  track() ───────────────> Tracker
+                              │
+                              ▼
+                     reflect() + meta-rules ◄──── MetaLearner
+                              │                       ▲
+                              ▼                       │
+                     generate_rules()                 │
+                              │                       │
+                              ▼                       │
+                     track() with rules ──────────────┘
+                     (meta-learner measures rule impact
+                      and feeds back into reflect())
+```
+
+The cycle: `track()` logs outcomes. `reflect()` receives meta-rules that guide it toward better suggestions. Rules get applied. The meta-learner measures whether those rules actually improved outcomes. That measurement feeds back into the next reflection. Over time, the reflection prompt itself evolves -- the agent doesn't just learn better behavior, it learns *how to learn* better behavior.
+
+### Usage
+
+```python
+# See which rules actually helped
+impacts = loops.meta_learner.get_rule_impacts()
+for impact in impacts:
+    print(f"{impact.rule_text}: {impact.impact_score:+.2f}")
+
+# See what rule patterns work best
+patterns = loops.meta_learner.get_best_rule_patterns()
+
+# See the meta-rules guiding reflections
+meta_rules = loops.meta_learner.get_meta_rules()
+
+# Score a specific reflection's quality
+quality = loops.meta_learner.track_reflection_quality("reflection-id")
+print(f"Adoption: {quality.adoption_rate:.0%}, Impact: {quality.avg_impact:+.2f}")
+```
+
+---
+
 ## Next Steps
 
 - **[API Reference](api-reference.md)** -- every method, parameter, and return type
