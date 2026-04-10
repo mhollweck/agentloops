@@ -30,13 +30,22 @@ class TestSeedRules:
             for rule in get_seed_rules(agent_type):
                 assert len(rule.evidence) > 0, f"No evidence for rule in {agent_type}: {rule.text[:50]}"
 
-    def test_rules_are_if_then_format(self):
+    def test_rules_have_valid_format(self):
         for agent_type in list_agent_types():
             for rule in get_seed_rules(agent_type):
-                text_lower = rule.text.lower()
-                assert "if" in text_lower and "then" in text_lower, (
-                    f"Rule not in IF/THEN format for {agent_type}: {rule.text[:50]}"
-                )
+                if rule.rule_type == "if_then":
+                    text_lower = rule.text.lower()
+                    assert "if" in text_lower and "then" in text_lower, (
+                        f"IF/THEN rule missing pattern for {agent_type}: {rule.text[:50]}"
+                    )
+                elif rule.rule_type == "scoring":
+                    assert rule.spec is not None, f"Scoring rule missing spec for {agent_type}"
+                    assert "factors" in rule.spec, f"Scoring rule missing factors for {agent_type}"
+                    assert "thresholds" in rule.spec, f"Scoring rule missing thresholds for {agent_type}"
+                    assert "SCORING RULE:" in rule.text, f"Scoring rule text not rendered for {agent_type}"
+                elif rule.rule_type == "decision_table":
+                    assert rule.spec is not None, f"Table rule missing spec for {agent_type}"
+                    assert "columns" in rule.spec, f"Table rule missing columns for {agent_type}"
 
     def test_list_agent_types_returns_all(self):
         types = list_agent_types()
@@ -44,15 +53,23 @@ class TestSeedRules:
         assert "customer-support" in types
         assert "content-creator" in types
         assert "code-generator" in types
-        assert len(types) == 10  # All 10 agent types
+        assert len(types) == 24  # All 24 agent types
 
     def test_seed_rules_data_consistency(self):
         """Verify SEED_RULES dict structure is valid."""
         for agent_type, rules in SEED_RULES.items():
-            for text, confidence, evidence in rules:
-                assert isinstance(text, str) and len(text) > 10
-                assert isinstance(confidence, float) and 0.0 <= confidence <= 1.0
-                assert isinstance(evidence, list) and all(isinstance(e, str) for e in evidence)
+            for seed in rules:
+                if len(seed) == 4:
+                    text, confidence, evidence, extra = seed
+                    assert isinstance(confidence, float) and 0.0 <= confidence <= 1.0
+                    assert isinstance(evidence, list)
+                    assert isinstance(extra, dict)
+                    assert "rule_type" in extra
+                else:
+                    text, confidence, evidence = seed
+                    assert isinstance(text, str) and len(text) > 10
+                    assert isinstance(confidence, float) and 0.0 <= confidence <= 1.0
+                    assert isinstance(evidence, list) and all(isinstance(e, str) for e in evidence)
 
 
 class TestSeedRulesIntegration:

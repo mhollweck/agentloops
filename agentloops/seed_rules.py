@@ -40,6 +40,32 @@ SEED_RULES: dict[str, list[tuple[str, float, list[str]]]] = {
             0.70,
             ["Single clear CTA outperforms multiple options by 2x"],
         ),
+        # Scoring rule: multi-factor prospect prioritization
+        (
+            None,
+            0.85,
+            ["Based on industry benchmarks across enterprise sales teams"],
+            {
+                "rule_type": "scoring",
+                "spec": {
+                    "decision": "Prospect outreach priority",
+                    "factors": [
+                        {"condition": "VP or C-level title", "weight": 30, "credibility": 0.88},
+                        {"condition": "Company revenue >$50M", "weight": 20, "credibility": 0.82},
+                        {"condition": "Recent funding or product launch", "weight": 15, "credibility": 0.80},
+                        {"condition": "Mentioned competitor or pain point publicly", "weight": 15, "credibility": 0.78},
+                        {"condition": "In target industry vertical", "weight": 10, "credibility": 0.75},
+                        {"condition": "Warm intro available", "weight": 10, "credibility": 0.85},
+                    ],
+                    "thresholds": [
+                        {"min_score": 70, "max_score": 100, "action": "High priority: deep research + multi-touch personalized sequence"},
+                        {"min_score": 45, "max_score": 69, "action": "Medium priority: standard personalized template"},
+                        {"min_score": 0, "max_score": 44, "action": "Low priority: batch outreach or skip"},
+                    ],
+                    "scale": [0, 100],
+                },
+            },
+        ),
     ],
     "customer-support": [
         (
@@ -806,22 +832,45 @@ SEED_RULES: dict[str, list[tuple[str, float, list[str]]]] = {
 def get_seed_rules(agent_type: str) -> list[Rule]:
     """Get pre-seeded starter rules for an agent type.
 
+    Supports both formats:
+    - 3-tuple: (text, confidence, evidence) — IF/THEN rules
+    - 4-tuple: (text_or_None, confidence, evidence, extra) — any rule type
+      where extra = {"rule_type": "scoring", "spec": {...}}
+
     Args:
         agent_type: The type of agent (e.g., "sales-sdr", "customer-support").
 
     Returns:
         List of Rule objects with starter intelligence. Empty list if unknown type.
     """
+    from agentloops.rule_renderer import render_from_spec
+
     seeds = SEED_RULES.get(agent_type, [])
-    return [
-        Rule(
-            text=text,
-            confidence=confidence,
-            evidence=evidence,
-            evidence_count=len(evidence),
-        )
-        for text, confidence, evidence in seeds
-    ]
+    rules = []
+    for seed in seeds:
+        if len(seed) == 4:
+            text, confidence, evidence, extra = seed
+            rule_type = extra.get("rule_type", "if_then")
+            spec = extra.get("spec")
+            if text is None and spec:
+                text = render_from_spec(rule_type, spec, confidence)
+            rules.append(Rule(
+                text=text,
+                confidence=confidence,
+                evidence=evidence,
+                evidence_count=len(evidence),
+                rule_type=rule_type,
+                spec=spec,
+            ))
+        else:
+            text, confidence, evidence = seed
+            rules.append(Rule(
+                text=text,
+                confidence=confidence,
+                evidence=evidence,
+                evidence_count=len(evidence),
+            ))
+    return rules
 
 
 def list_agent_types() -> list[str]:

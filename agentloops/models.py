@@ -60,7 +60,15 @@ class Run:
 
 @dataclass
 class Rule:
-    """An IF/THEN decision rule derived from performance data."""
+    """A decision rule derived from performance data.
+
+    Supports 3 types:
+    - "if_then": Simple binary pattern (default). text is the canonical form.
+    - "scoring": Multi-factor weighted scoring. spec holds factors + thresholds.
+    - "decision_table": Combinatorial rules. spec holds columns + rows.
+
+    For scoring/table rules, text is auto-generated from spec by rule_renderer.
+    """
 
     text: str
     confidence: float  # 0.0 to 1.0
@@ -70,9 +78,12 @@ class Rule:
     created_at: str = field(default_factory=_now)
     last_validated: str = field(default_factory=_now)
     active: bool = True
+    rule_type: str = "if_then"  # "if_then" | "scoring" | "decision_table"
+    priority: int = 0  # Higher = injected first in prompt, resolves conflicts
+    spec: dict[str, Any] | None = None  # Structured data for scoring/table rules
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        d = {
             "id": self.id,
             "text": self.text,
             "confidence": self.confidence,
@@ -81,7 +92,12 @@ class Rule:
             "created_at": self.created_at,
             "last_validated": self.last_validated,
             "active": self.active,
+            "rule_type": self.rule_type,
+            "priority": self.priority,
         }
+        if self.spec is not None:
+            d["spec"] = self.spec
+        return d
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> Rule:
@@ -94,6 +110,9 @@ class Rule:
             created_at=d["created_at"],
             last_validated=d.get("last_validated", d["created_at"]),
             active=d.get("active", True),
+            rule_type=d.get("rule_type", "if_then"),
+            priority=d.get("priority", 0),
+            spec=d.get("spec"),
         )
 
 

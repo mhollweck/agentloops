@@ -87,6 +87,12 @@ class Forgetter:
         except (ValueError, TypeError):
             pass
 
+        # Structured rules (scoring, decision_table) get 2x age allowance
+        # because they're harder to regenerate (more data needed)
+        rule_type = getattr(rule, "rule_type", "if_then")
+        if rule_type in ("scoring", "decision_table"):
+            cutoff = cutoff - timedelta(days=21)  # Extra 21 days
+
         created = _parse_date(rule.created_at)
 
         if strategy == "decay":

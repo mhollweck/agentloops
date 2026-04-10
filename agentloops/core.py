@@ -336,8 +336,9 @@ class AgentLoops:
     def enhance_prompt(self, base_prompt: str) -> str:
         """Inject active rules and conventions into an agent prompt.
 
-        Appends the current rules and conventions to the base prompt so the
-        agent benefits from everything the system has learned.
+        Rules are grouped by type: scoring rubrics first (highest info density),
+        then decision tables, then simple IF/THEN rules. Within each group,
+        rules are sorted by priority and confidence.
 
         Args:
             base_prompt: The agent's base system prompt.
@@ -345,17 +346,38 @@ class AgentLoops:
         Returns:
             The enhanced prompt with rules and conventions appended.
         """
+        from agentloops.rule_renderer import render_rule
+
         rules = self._rule_engine.active()
         conventions = self._convention_store.get_conventions()
 
         if not rules and not conventions:
             return base_prompt
 
+        # Sort by priority DESC, then confidence DESC
+        rules.sort(key=lambda r: (r.priority, r.confidence), reverse=True)
+
+        scoring = [r for r in rules if r.rule_type == "scoring"]
+        tables = [r for r in rules if r.rule_type == "decision_table"]
+        if_then = [r for r in rules if r.rule_type not in ("scoring", "decision_table")]
+
         sections: list[str] = [base_prompt, ""]
 
-        if rules:
+        if scoring:
+            sections.append("## Scoring Rubrics (multi-factor decisions)")
+            for rule in scoring:
+                sections.append(render_rule(rule))
+                sections.append("")
+
+        if tables:
+            sections.append("## Decision Tables (combinatorial rules)")
+            for rule in tables:
+                sections.append(render_rule(rule))
+                sections.append("")
+
+        if if_then:
             sections.append("## Decision Rules (learned from past performance)")
-            for rule in rules:
+            for rule in if_then:
                 sections.append(f"- {rule.text} [confidence: {rule.confidence:.2f}]")
             sections.append("")
 

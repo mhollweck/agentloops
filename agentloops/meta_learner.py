@@ -52,6 +52,7 @@ class RuleImpact:
     outcomes_after: list[float] = field(default_factory=list)
     id: str = field(default_factory=_new_id)
     created_at: str = field(default_factory=_now)
+    rule_type: str = "if_then"  # Track which rule type this is
 
     @property
     def impact_score(self) -> float | None:
@@ -79,6 +80,7 @@ class RuleImpact:
             "outcomes_before": self.outcomes_before,
             "outcomes_after": self.outcomes_after,
             "impact_score": self.impact_score,
+            "rule_type": self.rule_type,
             "created_at": self.created_at,
         }
 
@@ -153,7 +155,8 @@ class MetaLearner:
             rule_id=rule.id,
             rule_text=rule.text,
             confidence_at_creation=rule.confidence,
-            outcomes_before=recent_outcomes[-10:],  # Last 10 outcomes
+            outcomes_before=recent_outcomes[-10:],
+            rule_type=getattr(rule, "rule_type", "if_then"),
         )
 
     def track_outcome_with_rule(self, rule_id: str, outcome_score: float) -> None:
@@ -258,6 +261,34 @@ class MetaLearner:
 
         return patterns
 
+    def get_best_rule_type(self) -> dict[str, Any]:
+        """Compare impact across rule types (if_then, scoring, decision_table).
+
+        Returns stats per type so the reflection engine knows which format works best.
+        """
+        impacts = [i for i in self._rule_impacts.values() if i.impact_score is not None]
+
+        if len(impacts) < 5:
+            return {"status": "not_enough_data"}
+
+        by_type: dict[str, list[float]] = {}
+        for i in impacts:
+            rt = getattr(i, "rule_type", "if_then")
+            by_type.setdefault(rt, []).append(i.impact_score)
+
+        results: dict[str, Any] = {}
+        for rtype, scores in by_type.items():
+            if scores:
+                results[rtype] = {
+                    "count": len(scores),
+                    "avg_impact": round(sum(scores) / len(scores), 4),
+                    "positive_rate": round(
+                        len([s for s in scores if s > 0]) / len(scores), 4
+                    ),
+                }
+
+        return results
+
     def get_meta_rules(self) -> list[str]:
         """Generate meta-rules that can improve the reflection engine.
 
@@ -311,6 +342,22 @@ class MetaLearner:
                 f"Only {pos_rate:.0%} of past rules had positive impact. "
                 f"Be more selective — fewer, higher-quality rules are better."
             )
+
+        # Rule type effectiveness
+        type_stats = self.get_best_rule_type()
+        if type_stats.get("status") != "not_enough_data":
+            best_type = max(
+                ((t, s) for t, s in type_stats.items() if isinstance(s, dict) and s.get("count", 0) >= 3),
+                key=lambda x: x[1]["positive_rate"],
+                default=None,
+            )
+            if best_type:
+                t, s = best_type
+                if t != "if_then" and s["positive_rate"] > 0.6:
+                    meta_rules.append(
+                        f"'{t}' rules have {s['positive_rate']:.0%} positive impact rate "
+                        f"({s['count']} tracked). Consider using this format for multi-factor decisions."
+                    )
 
         return meta_rules
 

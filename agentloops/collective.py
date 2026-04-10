@@ -48,10 +48,15 @@ COLLECTIVE_API_URL = os.environ.get(
 )
 
 
-def _fingerprint(agent_type: str, rule_text: str) -> str:
+def _fingerprint(agent_type: str, rule_text: str, spec: dict | None = None) -> str:
     """Generate a stable fingerprint for dedup. Same rule from different users = same fingerprint."""
-    normalized = re.sub(r'\s+', ' ', rule_text.strip().lower())
-    raw = f"{agent_type}:{normalized}"
+    if spec:
+        # For structured rules, fingerprint the spec structure (more stable than rendered text)
+        normalized = json.dumps(spec, sort_keys=True, separators=(",", ":"))
+        raw = f"{agent_type}:spec:{normalized}"
+    else:
+        normalized = re.sub(r'\s+', ' ', rule_text.strip().lower())
+        raw = f"{agent_type}:{normalized}"
     return hashlib.sha256(raw.encode()).hexdigest()[:32]
 
 
@@ -251,14 +256,24 @@ class CollectiveClient:
                 continue
 
             sanitized_text = _sanitize_rule_text(rule.text)
+            sanitized_spec = _sanitize_spec(rule.spec) if rule.spec else None
 
-            # Anti-poisoning: format validation
-            is_valid, reason = _validate_rule_format(sanitized_text)
-            if not is_valid:
-                logger.debug(f"Rule rejected by format validation: {reason}")
-                continue
+            # Anti-poisoning: format validation (skip for structured rules — they have spec validation)
+            if rule.rule_type == "if_then":
+                is_valid, reason = _validate_rule_format(sanitized_text)
+                if not is_valid:
+                    logger.debug(f"Rule rejected by format validation: {reason}")
+                    continue
+            elif rule.rule_type == "scoring" and sanitized_spec:
+                if not sanitized_spec.get("factors") or not sanitized_spec.get("thresholds"):
+                    logger.debug("Scoring rule rejected: missing factors or thresholds")
+                    continue
+            elif rule.rule_type == "decision_table" and sanitized_spec:
+                if not sanitized_spec.get("columns") or not sanitized_spec.get("rows"):
+                    logger.debug("Decision table rejected: missing columns or rows")
+                    continue
 
-            fp = _fingerprint(self._agent_type, sanitized_text)
+            fp = _fingerprint(self._agent_type, sanitized_text, sanitized_spec)
 
             # Anti-poisoning: skip if same fingerprint contributed too many times
             if self._anomaly_tracker.should_skip_fingerprint(fp):
@@ -539,6 +554,28 @@ def _sanitize_rule_text(text: str) -> str:
     sanitized = re.sub(r'\$[\d,]+[KMB]?\b', '[AMOUNT]', sanitized)
     sanitized = re.sub(r'\b\d{3,}\b', '[NUMBER]', sanitized)
 
+    return sanitized
+
+
+def _sanitize_spec(spec: dict | None) -> dict | None:
+    """Recursively sanitize all string values in a rule spec dict."""
+    if spec is None:
+        return None
+    sanitized = {}
+    for key, value in spec.items():
+        if isinstance(value, str):
+            sanitized[key] = _sanitize_rule_text(value)
+        elif isinstance(value, list):
+            sanitized[key] = [
+                _sanitize_spec(item) if isinstance(item, dict)
+                else _sanitize_rule_text(item) if isinstance(item, str)
+                else item
+                for item in value
+            ]
+        elif isinstance(value, dict):
+            sanitized[key] = _sanitize_spec(value)
+        else:
+            sanitized[key] = value
     return sanitized
 
 

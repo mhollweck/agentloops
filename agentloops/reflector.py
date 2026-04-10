@@ -30,7 +30,11 @@ Analyze these recent runs and produce a structured critique. For each run you se
 ## Your Task
 1. Identify what worked well and what failed.
 2. Look for patterns — are certain types of inputs consistently failing?
-3. Suggest new IF/THEN rules based on the evidence.
+3. Suggest new rules based on the evidence. Choose the best format:
+   - **IF/THEN** (default): For simple binary patterns. "IF <condition> THEN <action> — because <evidence>"
+   - **SCORING**: For multi-factor decisions with 3+ contributing factors. Output as a dict with rule_type, spec, confidence.
+   - **DECISION TABLE**: For decisions where factor combinations matter. Output as a dict with rule_type, spec, confidence.
+   Most rules should be IF/THEN. Only use scoring/table when the pattern genuinely requires it.
 4. Flag any existing rules that seem wrong or outdated.
 5. Rate your confidence in each suggestion (0.0 to 1.0).
 
@@ -38,7 +42,8 @@ Analyze these recent runs and produce a structured critique. For each run you se
 {{
   "critique": "2-3 paragraph analysis of what's working and what isn't",
   "suggested_rules": [
-    "IF <condition> THEN <action> — because <evidence>"
+    "IF <condition> THEN <action> — because <evidence>",
+    {{"rule_type": "scoring", "spec": {{"decision": "...", "factors": [...], "thresholds": [...], "scale": [0, 100]}}, "confidence": 0.85}}
   ],
   "confidence_scores": {{
     "rule text here": 0.85

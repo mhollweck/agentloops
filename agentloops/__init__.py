@@ -28,10 +28,11 @@ from agentloops.outcomes import MetricDef, OutcomeConfig
 from agentloops.quality_gate import GateResult, QualityGate
 from agentloops.reflector import Reflector
 from agentloops.rule_engine import RuleEngine
+from agentloops.rule_renderer import render_rule
 from agentloops.seed_rules import get_seed_rules, list_agent_types
 from agentloops.tracker import Tracker
 
-__version__ = "0.1.6"
+__version__ = "0.2.0"
 
 __all__ = [
     "AgentLoops",
@@ -48,6 +49,7 @@ __all__ = [
     "RuleEngine",
     "Run",
     "Tracker",
+    "render_rule",
     "get_seed_rules",
     "list_agent_types",
 ]

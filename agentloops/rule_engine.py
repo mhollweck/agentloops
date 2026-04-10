@@ -8,17 +8,29 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from typing import Any
+
 from agentloops.models import Rule, Run
 from agentloops.storage.base import BaseStorage
 
 
-_RULE_GENERATION_PROMPT = """You are a rule generation engine. Analyze these agent runs and discover IF/THEN decision rules.
+_RULE_GENERATION_PROMPT = """You are a rule generation engine. Analyze these agent runs and discover decision rules.
 
-A good rule:
-- Is specific and actionable (not vague advice)
-- Has clear evidence from the runs
-- Uses the format: IF <observable condition> THEN <specific action>
-- Example: "IF the user asks about pricing THEN include the comparison table — because runs with tables had 90% success vs 45% without"
+## Rule Types — Choose the Best Format
+
+1. **IF/THEN** (default): Binary condition → single action.
+   Use for: simple, observable patterns with one clear trigger.
+   Output: {{"rule_type": "if_then", "text": "IF <condition> THEN <action> — because <evidence>"}}
+
+2. **SCORING**: 3+ weighted factors → graduated action thresholds.
+   Use for: decisions where multiple independent signals each contribute different amounts.
+   Output: {{"rule_type": "scoring", "spec": {{"decision": "...", "factors": [{{"condition": "...", "weight": 30, "credibility": 0.85}}], "thresholds": [{{"min_score": 70, "max_score": 100, "action": "..."}}], "scale": [0, 100]}}}}
+
+3. **DECISION TABLE**: 2-4 input dimensions → different action per combination.
+   Use for: decisions where the COMBINATION of factors matters (not just the sum).
+   Output: {{"rule_type": "decision_table", "spec": {{"decision": "...", "columns": ["Factor1", "Factor2"], "action_column": "Action", "rows": [{{"conditions": {{"Factor1": "value"}}, "action": "...", "confidence": 0.85}}], "fallback": "default action"}}}}
+
+MOST rules should be IF/THEN. Only use scoring when you see 3+ independent factors contributing to one decision. Only use tables when different factor combinations need genuinely different actions.
 
 ## Runs to Analyze
 {runs_text}
@@ -30,6 +42,7 @@ A good rule:
 {{
   "rules": [
     {{
+      "rule_type": "if_then",
       "text": "IF <condition> THEN <action> — because <evidence>",
       "confidence": 0.85,
       "evidence": ["run_id_1 showed X", "run_id_2 confirmed Y"]
@@ -58,12 +71,17 @@ class RuleEngine:
     def generate_rules(self, runs: list[Run] | None = None) -> list[Rule]:
         """Analyze runs to discover patterns and generate new rules.
 
+        Supports 3 rule types: if_then, scoring, decision_table.
+        The LLM chooses the best format based on the patterns it finds.
+
         Args:
             runs: Runs to analyze. If None, uses the last 20 runs.
 
         Returns:
             List of newly generated Rule objects (already persisted).
         """
+        from agentloops.rule_renderer import render_from_spec
+
         if runs is None:
             runs = self._storage.get_runs(agent_name=self._agent_name, last_n=20)
 
@@ -76,11 +94,29 @@ class RuleEngine:
 
         new_rules: list[Rule] = []
         for item in result.get("rules", []):
+            rule_type = item.get("rule_type", "if_then")
+            spec = item.get("spec")
+            confidence = item.get("confidence", 0.5)
+            evidence = item.get("evidence", [])
+
+            # For structured types, auto-generate text from spec
+            if rule_type in ("scoring", "decision_table") and spec:
+                text = render_from_spec(rule_type, spec, confidence)
+            else:
+                text = item.get("text", "")
+                rule_type = "if_then"
+                spec = None
+
+            if not text:
+                continue
+
             rule = Rule(
-                text=item["text"],
-                confidence=item.get("confidence", 0.5),
-                evidence=item.get("evidence", []),
-                evidence_count=len(item.get("evidence", [])),
+                text=text,
+                confidence=confidence,
+                evidence=evidence,
+                evidence_count=len(evidence),
+                rule_type=rule_type,
+                spec=spec,
             )
             self._storage.save_rule(rule)
             new_rules.append(rule)
@@ -98,25 +134,42 @@ class RuleEngine:
 
     def add_rule(
         self,
-        text: str,
+        text: str | None = None,
         evidence: list[str] | None = None,
         confidence: float = 0.7,
+        rule_type: str = "if_then",
+        spec: dict[str, Any] | None = None,
+        priority: int = 0,
     ) -> Rule:
         """Manually add a rule.
 
         Args:
-            text: The IF/THEN rule text.
+            text: The rule text. Auto-generated from spec for scoring/table types.
             evidence: List of evidence strings supporting the rule.
             confidence: Confidence score from 0.0 to 1.0.
+            rule_type: "if_then", "scoring", or "decision_table".
+            spec: Structured data for scoring/table rules.
+            priority: Higher = injected first in prompt.
 
         Returns:
             The created Rule object.
         """
+        from agentloops.rule_renderer import render_from_spec
+
+        if text is None and spec and rule_type in ("scoring", "decision_table"):
+            text = render_from_spec(rule_type, spec, confidence)
+
+        if not text:
+            raise ValueError("Rule must have text or a spec to render from")
+
         rule = Rule(
             text=text,
             confidence=confidence,
             evidence=evidence or [],
             evidence_count=len(evidence) if evidence else 0,
+            rule_type=rule_type,
+            spec=spec,
+            priority=priority,
         )
         self._storage.save_rule(rule)
         return rule
