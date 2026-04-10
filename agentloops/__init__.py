@@ -31,7 +31,7 @@ from agentloops.rule_engine import RuleEngine
 from agentloops.seed_rules import get_seed_rules, list_agent_types
 from agentloops.tracker import Tracker
 
-__version__ = "0.1.5"
+__version__ = "0.1.6"
 
 __all__ = [
     "AgentLoops",

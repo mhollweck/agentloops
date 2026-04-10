@@ -265,12 +265,22 @@ class CollectiveClient:
                 logger.debug(f"Rule skipped: fingerprint {fp[:8]}... seen too many times from this instance")
                 continue
 
+            # Extract reasoning from "because" clause for staging pipeline
+            reasoning = None
+            for sep in [" — because ", " because ", " - because "]:
+                if sep in sanitized_text:
+                    reasoning = sanitized_text.split(sep, 1)[1]
+                    break
+            if not reasoning and rule.evidence:
+                reasoning = "; ".join(rule.evidence[:3])
+
             anonymized.append({
                 "agent_type": self._agent_type,
                 "rule_text": sanitized_text,
                 "confidence": rule.confidence,
                 "evidence_count": rule.evidence_count,
                 "fingerprint": fp,
+                "reasoning": reasoning,
             })
 
         if not anonymized:
@@ -409,21 +419,19 @@ class CollectiveClient:
     # -- Internal network helpers ------------------------------------------
 
     def _send_contribution(self, anonymized_rules: list[dict]) -> None:
-        """Send anonymized rules to Supabase via RPC (upsert with dedup)."""
+        """Send anonymized rules to Supabase staging pipeline via RPC."""
         try:
             import urllib.request
 
             headers = self._supabase_headers()
 
             # Generate agent hash for server-side rate limiting
-            # Uses agent_type + hourly time bucket (no real IP needed)
             hour_bucket = int(time.time() // 3600)
             agent_hash = hashlib.sha256(
                 f"{self._agent_type}:{hour_bucket}".encode()
             ).hexdigest()[:32]
 
             for rule in anonymized_rules:
-                # Call the upsert_collective_rule function via Supabase RPC
                 data = json.dumps({
                     "p_agent_type": rule["agent_type"],
                     "p_rule_text": rule["rule_text"],
@@ -431,16 +439,38 @@ class CollectiveClient:
                     "p_evidence_count": rule["evidence_count"],
                     "p_fingerprint": rule["fingerprint"],
                     "p_agent_hash": agent_hash,
+                    "p_reasoning": rule.get("reasoning"),
                 }).encode()
 
-                req = urllib.request.Request(
-                    f"{self._supabase_url}/rest/v1/rpc/upsert_collective_rule",
-                    data=data,
-                    headers=headers,
-                    method="POST",
-                )
-                with urllib.request.urlopen(req, timeout=5) as resp:
-                    pass  # 200/204 = success
+                # Use submit_rule (staging pipeline) — falls back to
+                # upsert_collective_rule on older Supabase schemas
+                try:
+                    req = urllib.request.Request(
+                        f"{self._supabase_url}/rest/v1/rpc/submit_rule",
+                        data=data,
+                        headers=headers,
+                        method="POST",
+                    )
+                    with urllib.request.urlopen(req, timeout=5) as resp:
+                        pass
+                except urllib.error.HTTPError:
+                    # Fallback for older schema without submit_rule
+                    fallback_data = json.dumps({
+                        "p_agent_type": rule["agent_type"],
+                        "p_rule_text": rule["rule_text"],
+                        "p_confidence": rule["confidence"],
+                        "p_evidence_count": rule["evidence_count"],
+                        "p_fingerprint": rule["fingerprint"],
+                        "p_agent_hash": agent_hash,
+                    }).encode()
+                    req = urllib.request.Request(
+                        f"{self._supabase_url}/rest/v1/rpc/upsert_collective_rule",
+                        data=fallback_data,
+                        headers=headers,
+                        method="POST",
+                    )
+                    with urllib.request.urlopen(req, timeout=5) as resp:
+                        pass
 
             logger.debug(f"Contributed {len(anonymized_rules)} rules to collective")
         except Exception as e:
