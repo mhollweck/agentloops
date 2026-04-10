@@ -278,6 +278,188 @@
       font-family: 'JetBrains Mono', monospace;
     }
 
+    /* --- How It Works --- */
+    .how-it-works { background: var(--card-hover); }
+    .how-it-works h2 {
+      text-align: center;
+      font-size: clamp(24px, 3vw, 36px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 12px;
+    }
+    .how-it-works .subtitle {
+      text-align: center;
+      color: var(--fg-muted);
+      font-size: 17px;
+      margin-bottom: 48px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .timeline { max-width: 640px; margin: 0 auto; }
+    .timeline-step {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 36px;
+      position: relative;
+    }
+    .timeline-step:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      left: 17px;
+      top: 40px;
+      bottom: -20px;
+      width: 2px;
+      background: var(--border);
+    }
+    .step-num {
+      width: 36px;
+      height: 36px;
+      min-width: 36px;
+      background: var(--accent);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      position: relative;
+      z-index: 1;
+    }
+    .step-content h3 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      letter-spacing: -0.01em;
+    }
+    .step-content p {
+      font-size: 14px;
+      color: var(--fg-muted);
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+    .step-content code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      background: var(--code-bg);
+      color: var(--code-fg);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .step-code {
+      background: var(--code-bg);
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 8px;
+      overflow-x: auto;
+    }
+    .step-code code {
+      background: none;
+      padding: 0;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    .step-rules {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .rule {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--fg);
+      line-height: 1.5;
+    }
+
+    /* --- Token Savings --- */
+    .token-savings h2 {
+      text-align: center;
+      font-size: clamp(24px, 3vw, 36px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 12px;
+    }
+    .token-savings .subtitle {
+      text-align: center;
+      color: var(--fg-muted);
+      font-size: 17px;
+      margin-bottom: 48px;
+    }
+    .savings-comparison {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      max-width: 700px;
+      margin: 0 auto 32px;
+      flex-wrap: wrap;
+    }
+    .savings-card {
+      flex: 1;
+      min-width: 240px;
+      border-radius: var(--radius);
+      padding: 28px 24px;
+      text-align: center;
+    }
+    .savings-memory {
+      background: #f0f4ff;
+      border: 1px solid #c7d2fe;
+    }
+    .savings-good {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+    }
+    .savings-label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 12px;
+    }
+    .savings-memory .savings-label { color: #4f46e5; }
+    .savings-good .savings-label { color: #16a34a; }
+    .savings-approach {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--fg);
+      margin-bottom: 12px;
+    }
+    .savings-example {
+      font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--fg-muted);
+      line-height: 1.5;
+      margin-bottom: 16px;
+      padding: 10px 12px;
+      background: rgba(0,0,0,0.03);
+      border-radius: 6px;
+    }
+    .savings-what {
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .savings-memory .savings-what { color: #4f46e5; }
+    .savings-good .savings-what { color: #16a34a; }
+    .savings-vs {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--fg-subtle);
+    }
+    .savings-footnote {
+      text-align: center;
+      font-size: 14px;
+      color: var(--fg-muted);
+      max-width: 540px;
+      margin: 0 auto;
+      line-height: 1.5;
+    }
+
     /* --- Mechanisms --- */
     .mechanisms h2 {
       text-align: center;
@@ -541,6 +723,7 @@
   <div class="nav-inner">
     <a href="#" class="nav-logo">AgentLoops</a>
     <div class="nav-links">
+      <a href="#how-it-works">How It Works</a>
       <a href="#mechanisms">Mechanisms</a>
       <a href="#comparison">Compare</a>
       <a href="https://github.com/mhollweck/agentloops" target="_blank" class="nav-cta">GitHub</a>
@@ -626,6 +809,76 @@ loops.conventions.<span class="fn">evolve</span>()
 <span class="cmt"># Forget stale patterns</span>
 loops.<span class="fn">forget</span>(max_age_days=<span class="num">21</span>)</pre>
     </div>
+  </div>
+</section>
+
+<!-- How It Works — Concrete Example -->
+<section class="how-it-works" id="how-it-works">
+  <div class="container">
+    <h2>How Self-Learning Actually Works</h2>
+    <p class="subtitle">A real example: a content agent that learns which posts go viral.</p>
+    <div class="timeline">
+      <div class="timeline-step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h3>Track every run</h3>
+          <p>Your content agent suggests TikTok ideas. You post them. You track the outcome.</p>
+          <div class="step-code"><code>loops.track(input="suggest tiktok", output="tutorial: how to use Claude", outcome="130 views")</code></div>
+          <div class="step-code"><code>loops.track(input="suggest tiktok", output="storytime: I quit my job for AI", outcome="47,000 views")</code></div>
+        </div>
+      </div>
+      <div class="timeline-step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h3>Agent reflects on patterns</h3>
+          <p>After 10 runs, the agent looks at what worked and what didn't. It extracts rules — not opinions, evidence.</p>
+          <div class="step-rules">
+            <div class="rule">IF emotional hook + personal story THEN expect 47K+ views (confidence: 0.85)</div>
+            <div class="rule">IF tutorial walkthrough THEN expect ~130 views (confidence: 0.72)</div>
+            <div class="rule">IF trending topic + hot take within 4 hours THEN expect 10K+ views (confidence: 0.68)</div>
+          </div>
+        </div>
+      </div>
+      <div class="timeline-step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h3>Rules get injected into prompts</h3>
+          <p>Next time the agent runs, <code>enhance_prompt()</code> adds the learned rules. The agent stops suggesting tutorials and starts leading with emotional hooks — without you rewriting the prompt.</p>
+          <div class="step-code"><code>enhanced = loops.enhance_prompt("You are a content strategist...")</code></div>
+        </div>
+      </div>
+      <div class="timeline-step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h3>Rules evolve or die</h3>
+          <p>After 50 runs, stale rules get pruned. Maybe tutorials start working because the audience shifted. Old rule dies, new one replaces it. The agent adapts — forever.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Memory + Learning -->
+<section class="token-savings">
+  <div class="container">
+    <h2>Memory Remembers. Learning Improves.</h2>
+    <p class="subtitle">They're not the same thing. Your agent needs both.</p>
+    <div class="savings-comparison">
+      <div class="savings-card savings-memory">
+        <div class="savings-label">Memory (Mem0, Letta, Zep)</div>
+        <div class="savings-approach">Remembers facts about this user</div>
+        <div class="savings-example">"John works at Stripe, prefers dark mode, asked about billing API last Tuesday"</div>
+        <div class="savings-what">Personalization</div>
+      </div>
+      <div class="savings-vs">+</div>
+      <div class="savings-card savings-good">
+        <div class="savings-label">Learning (AgentLoops)</div>
+        <div class="savings-approach">Learns patterns across all users</div>
+        <div class="savings-example">"IF user asks about billing THEN lead with code examples, not docs (72% faster resolution)"</div>
+        <div class="savings-what">Behavioral improvement</div>
+      </div>
+    </div>
+    <p class="savings-footnote">Memory without learning means your agent makes the same mistakes on every new user. Learning without memory means it can't personalize. Together: an agent that remembers <em>and</em> gets smarter. ~1,000 tokens total — compact, complementary, powerful.</p>
   </div>
 </section>
 

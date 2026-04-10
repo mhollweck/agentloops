@@ -26,6 +26,7 @@ import json
 import logging
 import os
 import re
+import time
 import threading
 from typing import Any
 
@@ -54,6 +55,111 @@ def _fingerprint(agent_type: str, rule_text: str) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()[:32]
 
 
+# -- Anti-poisoning: format validation ------------------------------------
+
+def _validate_rule_format(rule_text: str) -> tuple[bool, str]:
+    """Validate that a rule looks like a legitimate behavioral pattern.
+
+    Returns (is_valid, reason). Rejects gibberish, URLs-only, too-short/long rules.
+    """
+    text = rule_text.strip()
+
+    # Length checks
+    if len(text) < 10:
+        return False, f"Rule too short ({len(text)} chars, min 10)"
+    if len(text) > 500:
+        return False, f"Rule too long ({len(text)} chars, max 500)"
+
+    # Reject rules that are just URLs
+    if re.match(r'^https?://\S+$', text):
+        return False, "Rule is just a URL"
+
+    # Reject rules that are just numbers
+    if re.match(r'^[\d\s.,]+$', text):
+        return False, "Rule is just numbers"
+
+    # Gibberish detection: high ratio of special characters
+    alpha_count = sum(1 for c in text if c.isalpha())
+    if len(text) > 0 and alpha_count / len(text) < 0.4:
+        return False, "Rule has too many special characters (possible gibberish)"
+
+    # Must contain IF/THEN pattern OR be a reasonable behavioral instruction
+    has_if_then = bool(re.search(r'\bIF\b', text, re.IGNORECASE) and
+                       re.search(r'\bTHEN\b', text, re.IGNORECASE))
+    has_behavioral_keywords = bool(re.search(
+        r'\b(ALWAYS|NEVER|WHEN|DO NOT|SHOULD|MUST|AVOID|PREFER|ENSURE)\b',
+        text, re.IGNORECASE
+    ))
+
+    if not has_if_then and not has_behavioral_keywords:
+        return False, "Rule must contain IF/THEN pattern or behavioral keywords (ALWAYS, NEVER, WHEN, etc.)"
+
+    return True, "ok"
+
+
+# -- Anti-poisoning: anomaly detection ------------------------------------
+
+class _AnomalyTracker:
+    """In-memory tracker for per-session contribution anomalies."""
+
+    MAX_RULES_PER_CALL = 20
+    MAX_SAME_FINGERPRINT_PER_INSTANCE = 3
+
+    def __init__(self) -> None:
+        self._fingerprint_counts: dict[str, int] = {}  # fingerprint -> count from this instance
+        self._lock = threading.Lock()
+
+    def check_batch_size(self, rules: list) -> list:
+        """Cap a batch at MAX_RULES_PER_CALL. Logs warning if exceeded."""
+        if len(rules) > self.MAX_RULES_PER_CALL:
+            logger.warning(
+                f"AgentLoops anti-poisoning: batch of {len(rules)} rules exceeds "
+                f"limit of {self.MAX_RULES_PER_CALL} — truncating"
+            )
+            return rules[:self.MAX_RULES_PER_CALL]
+        return rules
+
+    def should_skip_fingerprint(self, fingerprint: str) -> bool:
+        """Returns True if this fingerprint has been contributed too many times from this instance."""
+        with self._lock:
+            count = self._fingerprint_counts.get(fingerprint, 0)
+            if count >= self.MAX_SAME_FINGERPRINT_PER_INSTANCE:
+                return True
+            self._fingerprint_counts[fingerprint] = count + 1
+            return False
+
+
+# -- Anti-poisoning: rate limiting (Python-side) --------------------------
+
+class _RateLimiter:
+    """In-memory rate limiter: max 50 contributions per agent per hour."""
+
+    MAX_PER_HOUR = 50
+
+    def __init__(self) -> None:
+        self._timestamps: list[float] = []
+        self._lock = threading.Lock()
+
+    def check_and_record(self, count: int = 1) -> bool:
+        """Returns True if under the rate limit. Records the contribution timestamps."""
+        now = time.time()
+        cutoff = now - 3600  # 1 hour window
+
+        with self._lock:
+            # Prune old entries
+            self._timestamps = [t for t in self._timestamps if t > cutoff]
+
+            if len(self._timestamps) + count > self.MAX_PER_HOUR:
+                logger.warning(
+                    f"AgentLoops anti-poisoning: rate limit would be exceeded "
+                    f"({len(self._timestamps)} + {count} > {self.MAX_PER_HOUR}/hr) — rejecting"
+                )
+                return False
+
+            self._timestamps.extend([now] * count)
+            return True
+
+
 class CollectiveClient:
     """Syncs anonymized learnings with the AgentLoops global network.
 
@@ -80,6 +186,9 @@ class CollectiveClient:
         self._enabled = enabled and agent_type is not None and not is_opted_out()
         self._has_logged_contribution = False
         self._tier = self._resolve_tier()
+        # Anti-poisoning defenses
+        self._anomaly_tracker = _AnomalyTracker()
+        self._rate_limiter = _RateLimiter()
 
     def _resolve_tier(self) -> str:
         if not self._enabled:
@@ -129,19 +238,42 @@ class CollectiveClient:
             )
             self._has_logged_contribution = True
 
-        anonymized = [
-            {
+        # Anti-poisoning: cap batch size
+        rules = self._anomaly_tracker.check_batch_size(rules)
+
+        anonymized = []
+        for rule in rules:
+            if not rule.active or rule.confidence < 0.6:
+                continue
+
+            sanitized_text = _sanitize_rule_text(rule.text)
+
+            # Anti-poisoning: format validation
+            is_valid, reason = _validate_rule_format(sanitized_text)
+            if not is_valid:
+                logger.debug(f"Rule rejected by format validation: {reason}")
+                continue
+
+            fp = _fingerprint(self._agent_type, sanitized_text)
+
+            # Anti-poisoning: skip if same fingerprint contributed too many times
+            if self._anomaly_tracker.should_skip_fingerprint(fp):
+                logger.debug(f"Rule skipped: fingerprint {fp[:8]}... seen too many times from this instance")
+                continue
+
+            anonymized.append({
                 "agent_type": self._agent_type,
-                "rule_text": _sanitize_rule_text(rule.text),
+                "rule_text": sanitized_text,
                 "confidence": rule.confidence,
                 "evidence_count": rule.evidence_count,
-                "fingerprint": _fingerprint(self._agent_type, _sanitize_rule_text(rule.text)),
-            }
-            for rule in rules
-            if rule.active and rule.confidence >= 0.6
-        ]
+                "fingerprint": fp,
+            })
 
         if not anonymized:
+            return
+
+        # Anti-poisoning: rate limiting
+        if not self._rate_limiter.check_and_record(len(anonymized)):
             return
 
         # Fire-and-forget on background thread — never block the agent
@@ -279,6 +411,13 @@ class CollectiveClient:
 
             headers = self._supabase_headers()
 
+            # Generate agent hash for server-side rate limiting
+            # Uses agent_type + hourly time bucket (no real IP needed)
+            hour_bucket = int(time.time() // 3600)
+            agent_hash = hashlib.sha256(
+                f"{self._agent_type}:{hour_bucket}".encode()
+            ).hexdigest()[:32]
+
             for rule in anonymized_rules:
                 # Call the upsert_collective_rule function via Supabase RPC
                 data = json.dumps({
@@ -287,6 +426,7 @@ class CollectiveClient:
                     "p_confidence": rule["confidence"],
                     "p_evidence_count": rule["evidence_count"],
                     "p_fingerprint": rule["fingerprint"],
+                    "p_agent_hash": agent_hash,
                 }).encode()
 
                 req = urllib.request.Request(
