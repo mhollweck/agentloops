@@ -148,10 +148,11 @@ class AgentLoops:
             api_key=api_key if api_key and api_key.startswith("al_") else None,
             enabled=collective_enabled,
         )
-        if collective_enabled and agent_type:
-            logger.info(
-                "AgentLoops: Collective Intelligence active (anonymized, sanitized). "
-                "Opt out: AgentLoops(..., collective=False) or agentloops.collective.opt_out()"
+        if collective_enabled and agent_type and not is_opted_out():
+            print(
+                "\n  AgentLoops: Collective Intelligence is ON for this agent.\n"
+                "  Anonymized IF/THEN patterns (no raw data) will be shared with the network.\n"
+                "  Opt out: AgentLoops(..., collective=False) or set AGENTLOOPS_COLLECTIVE_DISABLED=1\n"
             )
 
         # Load seed rules for the agent type (only if no rules exist yet)

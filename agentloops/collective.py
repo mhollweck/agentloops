@@ -236,6 +236,10 @@ class CollectiveClient:
                 "data, no identifiers). Opt out: AgentLoops(..., collective=False) or "
                 "set AGENTLOOPS_COLLECTIVE_DISABLED=1"
             )
+            print(
+                "  AgentLoops: contributing anonymized rules to the collective network. "
+                "Opt out: collective=False"
+            )
             self._has_logged_contribution = True
 
         # Anti-poisoning: cap batch size
