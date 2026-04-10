@@ -7,12 +7,11 @@ __pycache__/
 *.env
 .env.*
 
-# Internal business planning — never push to repo
-_internal/
-INVESTOR_MEMO.md
-TEST_TRACKING.md
+# Synced shared CLAUDE.md from parent workspace (not for public repo)
+.claude-shared.md
 
-# Platform code — private (the paid product)
+# Safety nets — these dirs now live in agentloops-internal
+_internal/
 server/
 dashboard/
 supabase/
